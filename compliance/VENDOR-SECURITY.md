@@ -45,9 +45,10 @@ pins: `requirements-locked.txt`.
 Application code is licensed under **Apache-2.0** (see `LICENSE`). The Foxentry name, logos, and brand assets are **trademarked** (all rights reserved) and are not covered by the Apache License — see `LICENSE`/`NOTICE`. Bundled components: openpyxl & et_xmlfile (MIT), Mulish font (OFL-1.1).
 
 ### Integrity
-`SHA256SUMS.txt` provides per-file SHA-256 digests for the whole package; per-file hashes
-for the vendored libraries are in `vendor/*/RECORD`. The product is plain, non-compiled
-Python — fully readable and auditable.
+Release binaries are published with a per-file SHA-256 checksum (`.sha256`) and a Sigstore
+build-provenance attestation (verify with `gh attestation verify`). The source is pinned to a
+signed git tag; per-file hashes for the vendored libraries are in `vendor/*/RECORD`. The product
+is plain, non-compiled Python — fully readable and auditable.
 
 ### Vulnerability disclosure
 See `SECURITY.md` (contact, supported versions, scope).
