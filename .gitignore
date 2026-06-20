@@ -1,0 +1,21 @@
+config.env
+.env
+input/*
+output/*
+!input/README.txt
+!output/README.txt
+__pycache__/
+*.pyc
+
+# PyInstaller build outputs (the .spec / version.txt / icon.ico are tracked)
+build/
+dist/
+
+# uložená session (poslední soubor, mapování, nastavení)
+.foxentry-session.json
+
+# request logs (debug)
+logs/*.jsonl
+logs/*.csv
+logs/app.log
+logs/*.log

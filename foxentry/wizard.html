@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foxentry Data Cleaner</title>
+<meta name="x-auth" content="__AUTH_TOKEN__">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20version%3D%221.1%22%20id%3D%22Vrstva_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20236.3%20236.2%22%20style%3D%22enable-background%3Anew%200%200%20236.3%20236.2%3B%22%20xml%3Aspace%3D%22preserve%22%3E%20%3Cstyle%20type%3D%22text%2Fcss%22%3E%20.st0%7Bfill%3A%23E74600%3B%7D%20.st1%7Bfill%3A%23CC3000%3B%7D%20.st2%7Bfill%3A%23FF6102%3B%7D%20%3C%2Fstyle%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_3_2_%22%3E%20%3Cg%20id%3D%22XMLID_42_%22%3E%20%3Cpath%20id%3D%22XMLID_3_%22%20class%3D%22st0%22%20d%3D%22M115.3%2C120.8c7.7%2C18.5%2C33.8%2C54.7%2C38.9%2C61c3.6%2C4.5%2C79.2%2C53.4%2C82.1%2C54.5V0%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_2_2_%22%3E%20%3Cg%20id%3D%22XMLID_49_%22%3E%20%3Cpolygon%20id%3D%22XMLID_59_%22%20class%3D%22st1%22%20points%3D%22115.3%2C120.8%20115.1%2C121.2%2071.7%2C184.9%20114.4%2C236.2%20236.3%2C236.2%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_4_2_%22%3E%20%3Cg%20id%3D%22XMLID_29_%22%3E%20%3Cpath%20id%3D%22XMLID_41_%22%20class%3D%22st2%22%20d%3D%22M43.9%2C154.7C14.2%2C184.5%2C0%2C236.2%2C0%2C236.2h115.3V120.8C115.3%2C120.9%2C71.8%2C126.9%2C43.9%2C154.7z%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_2_%22%3E%20%3Cg%20id%3D%22XMLID_43_%22%3E%20%3Cpolygon%20id%3D%22XMLID_53_%22%20class%3D%22st2%22%20points%3D%22115.3%2C0%20115.3%2C120.8%20236.3%2C120.8%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E">
+<style>
+  @font-face{ font-family:'Mulish'; font-style:normal; font-weight:400 800;
+    font-display:swap; src:url('/assets/mulish.woff2') format('woff2'); }
+</style>
+<script>
+  // Session token for the local API (against CSRF/DNS rebinding). Adds X-Auth to all /api/ calls.
+  (function(){ var m=document.querySelector('meta[name=x-auth]'); var AUTH=m?m.content:'';
+    var _f=window.fetch.bind(window);
+    window.fetch=function(u,o){ o=o||{};
+      if(typeof u==='string' && u.indexOf('/api/')===0){
+        o.headers=Object.assign({}, o.headers||{}, {'X-Auth':AUTH}); }
+      return _f(u,o); };
+  })();
+</script>
+<style>
+  :root{
+    --fox:#f54009; --fox-d:#ba2a09; --violet:#422c63; --blue:#2c83ee; --blue-l:#ebf4ff;
+    --green:#4ebf3c; --ink:#131313; --grey:#8588a1; --grey-l:#a1a2ae; --grey-ll:#bbbcc3;
+    --divider:#d9dae2; --bg:#ffffff; --card:#fff; --surface-2:#f5f6f9; --chip:#fff2ee; --pill:#f1f1f1; --err:#d82400;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Mulish",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;font-size:15px}
+  /* controls inherit font and color (otherwise the browser renders them with the system font) */
+  button,input,select,textarea,optgroup{font-family:inherit;color:var(--ink)}
+  a{color:var(--fox)}
+  /* header */
+  header{background:var(--card);border-bottom:1px solid var(--divider);position:sticky;top:0;z-index:20}
+  .bar{margin:0;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:1.2rem;padding:.75rem 1.6rem}
+  .brand{display:flex;align-items:center;gap:.55rem;font-weight:700;font-size:1rem;color:var(--ink);justify-self:start;text-decoration:none}
+  .logo{height:26px;width:auto;flex:0 0 auto}
+  .brandmark{font-weight:800;font-size:1.18rem;color:var(--fox);letter-spacing:-.02em;line-height:1}
+  .steps{display:flex;align-items:center;gap:.1rem;justify-self:center;flex-wrap:nowrap}
+  .step{display:flex;align-items:center;gap:.55rem;color:#808189;font-size:.9rem;padding:.2rem .35rem;white-space:nowrap;font-weight:700}
+  .step .n{width:2rem;height:2rem;border-radius:50%;border:2px solid var(--divider);display:grid;place-items:center;font-size:.85rem;font-weight:700;background:var(--card);color:#808189;flex:0 0 auto}
+  .step.active{color:var(--ink)}
+  .step.active .n{border-color:var(--blue);background:var(--card);color:var(--blue)}
+  .step.done{color:var(--ink)}
+  .step.done .n{border-color:#f1f7ff;background:#f1f7ff;color:var(--blue)}
+  .step .ln{flex:1;min-width:18px;height:2px;background:var(--divider)}
+  .top-actions{display:flex;gap:.5rem;align-items:center;justify-self:end}
+  .lang{display:flex;border:1px solid var(--divider);border-radius:6px;overflow:hidden}
+  .lang button{border:0;background:var(--card);color:var(--grey);padding:.32rem .62rem;cursor:pointer;font-size:.8rem;font-weight:700}
+  .lang button.active{background:var(--blue);color:#fff}
+  .icon-btn{border:1px solid var(--divider);background:var(--card);border-radius:6px;padding:.36rem .56rem;cursor:pointer;font-size:.9rem;color:var(--grey)}
+  .icon-btn:hover{color:var(--ink)}
+  main{margin:0;padding:1.6rem 1.6rem 5rem}
+  h1{font-size:1.5rem;margin:0 0 .3rem;font-weight:700}
+  .lead{color:var(--grey);margin:0 0 1.4rem}
+  h2{font-size:1rem;margin:1.4rem 0 .6rem;font-weight:700}
+  .muted{color:var(--grey)} .small{font-size:.85rem}
+  /* buttons */
+  .btn{display:inline-block;padding:.85rem 1.6rem;background:var(--fox);border:1px solid var(--fox);border-radius:5px;
+    box-shadow:2px 5px 6px 1px rgba(0,0,0,.12);color:#fff;font-weight:700;font-size:.9rem;cursor:pointer;line-height:1}
+  .btn:hover:not(:disabled){background:var(--fox-d);border-color:var(--fox-d)}
+  .btn:disabled{background:var(--grey-ll);border-color:var(--grey-ll);color:#fff;cursor:default;box-shadow:none;opacity:1}
+  .btn--sm{padding:.28rem .7rem;font-size:.82rem;margin-left:.5rem}
+  .btn--start{box-shadow:0 6px 18px rgba(245,64,9,.28)}
+  .btn--start:not(:disabled):hover{box-shadow:0 8px 22px rgba(245,64,9,.36)}
+  .btn--start .play{display:inline-block;margin-right:.5rem;font-size:.85em;transform:translateY(-1px)}
+  .btn--ghost{background:var(--card);color:var(--grey);border:2px solid var(--divider);box-shadow:none;padding:.8rem 1.4rem;cursor:pointer}
+  .btn--ghost:hover{background:var(--card);border-color:var(--grey-l);color:var(--ink)}
+  .btn,.btn--ghost{transition:background .15s,border-color .15s,color .15s}
+  /* hover/pointer for everything clickable */
+  .step.done{cursor:pointer}
+  .step.done:hover .n{border-color:var(--blue);color:var(--blue)}
+  .lang button{transition:background .15s,color .15s}
+  .lang button:hover:not(.active){background:var(--surface-2);color:var(--ink)}
+  .icon-btn{transition:color .15s,border-color .15s}
+  .icon-btn:hover{border-color:var(--grey-l)}
+  .fileitem{transition:border-color .15s,background .15s}
+  .chip{transition:border-color .15s,box-shadow .15s}
+  .chip:hover{border-color:var(--fox)}
+  .chip.empty:hover{border-color:var(--grey-l);background:var(--card)}
+  .scope label{transition:border-color .15s}
+  .scope label:hover{border-color:var(--grey-l)}
+  .gsel{transition:border-color .15s}
+  .gsel:hover{border-color:var(--fox)}
+  .sheetarrow{transition:color .15s,border-color .15s}
+  .dl{cursor:pointer}.dl:hover{text-decoration:underline}
+  a{cursor:pointer}
+  /* rounded white panel under the columns table */
+  .sheetpanel{background:var(--card);border:1px solid var(--divider);border-radius:12px;padding:.3rem;overflow:hidden}
+  /* card / filter */
+  .card{background:var(--card);border:1px solid var(--divider);border-radius:10px;padding:1.2rem 1.3rem;margin-bottom:1rem}
+  .filter{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;
+    padding:0 0 .9rem;margin-bottom:1.3rem;border-bottom:1px solid var(--divider)}
+  .filter__left{display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap}
+  .filter__mark{font-size:1rem} .filter__mark strong{font-weight:700}
+  .filter__sum{display:flex;align-items:center;gap:.4rem;color:var(--grey-l);font-weight:700;font-size:.8rem}
+  .filter__sum mark{padding:.18rem .6rem;background:var(--pill);border-radius:3px;color:var(--ink)}
+  /* first-row switch */
+  .switchline{display:flex;align-items:center;gap:.55rem;color:var(--blue);font-weight:700;font-size:.85rem;cursor:pointer}
+  .switch{position:relative;display:inline-block;width:38px;height:18px;flex:0 0 auto}
+  .switch input{position:absolute;inset:0;opacity:0;cursor:pointer;z-index:2;margin:0}
+  .switch .h{position:absolute;inset:0;background:var(--grey);border-radius:9px;transition:background .25s}
+  .switch .h:before{content:"";position:absolute;top:1px;left:1px;width:16px;height:16px;background:#fff;border-radius:50%;transition:left .25s}
+  .switch input:checked + .h{background:var(--blue)} .switch input:checked + .h:before{left:21px}
+  /* columns spreadsheet (mirrors the Foxentry app) */
+  .sheetbox{position:relative}
+  .sheetwrap{overflow-x:auto;padding:.2rem .1rem .6rem;margin-bottom:.4rem;cursor:grab;
+    scrollbar-width:none;-ms-overflow-style:none}
+  .sheetwrap::-webkit-scrollbar{display:none}
+  .sheetwrap.drag{cursor:grabbing;user-select:none}
+  .sheetarrow{position:absolute;top:50%;transform:translateY(-50%);z-index:6;width:42px;height:42px;border-radius:50%;
+    border:1px solid var(--divider);background:var(--card);color:var(--grey);cursor:pointer;display:grid;place-items:center;
+    box-shadow:0 4px 16px rgba(0,0,0,.08);font-size:1.2rem;line-height:1}
+  .sheetarrow:hover{color:var(--fox);border-color:var(--fox)}
+  .sheetarrow--l{left:-8px} .sheetarrow--r{right:-8px}
+  .sheetarrow[disabled]{opacity:.3;cursor:default;color:var(--grey-ll);border-color:var(--divider)}
+  .sheet{display:flex;width:100%;position:relative;align-items:stretch}
+  .gut{flex:0 0 auto;width:150px}
+  .col{flex:1 1 240px;min-width:210px;max-width:360px;border-left:1px solid var(--divider);border-radius:8px}
+  .col:last-of-type{border-right:1px solid var(--divider)}
+  .col.mapped{box-shadow:inset 0 0 0 2px var(--c)}
+  .chiprow{height:64px;display:flex;align-items:center;padding:.5rem;border-bottom:1px solid var(--divider);background:var(--card)}
+  .letter{height:22px;display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--grey-l);background:var(--surface-2);border-bottom:1px solid var(--divider)}
+  .rowh{height:38px;display:flex;align-items:center;padding:0 .75rem;font-size:.85rem;border-bottom:1px solid var(--divider);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--card)}
+  .col .rowh.celldata,.col .rowh.cellhdr{display:block;line-height:38px}
+  .cellhdr{font-weight:700}
+  .celldata{color:var(--grey)}
+  .celldata.empty{color:var(--grey-ll);font-style:italic}
+  .grouprow{height:54px;display:flex;align-items:center;padding:.5rem}
+  .gut .chiprow{justify-content:flex-start;gap:.45rem;font-weight:700;font-size:.85rem;color:var(--ink)}
+  .gut .chiprow img{height:20px;opacity:.95}
+  .gut .letter{background:var(--surface-2)}
+  .gut .rowh{justify-content:flex-end;color:var(--grey-l);font-size:.75rem;background:var(--surface-2)}
+  .firstrow{display:flex;align-items:center;gap:.45rem;font-size:.75rem;color:var(--blue);cursor:pointer;font-weight:700}
+  .firstrow input{margin:0;accent-color:var(--blue)}
+  /* per-column select header (admin db__option look) */
+  .chip{display:flex;align-items:center;gap:.5rem;width:100%;min-height:46px;position:relative;
+    border:1px solid var(--c,var(--divider));border-radius:8px;padding:.55rem .75rem;background:var(--card);
+    cursor:pointer;font-size:.85rem;font-weight:700;color:var(--ink);box-shadow:0 1px 2px rgba(143,160,188,.2)}
+  .chip:not(.empty){background:var(--chip);border-width:1.5px}
+  .chip.empty{color:var(--grey);background:var(--surface-2);justify-content:flex-start;padding-right:1.9rem}
+  .chip.empty:after{content:"";position:absolute;right:.9rem;top:50%;width:7px;height:7px;
+    border-right:2px solid var(--grey-l);border-bottom:2px solid var(--grey-l);transform:translateY(-65%) rotate(45deg)}
+  .chip .x{margin-left:auto;border:0;background:transparent;color:var(--grey-l);cursor:pointer;font-size:.9rem;line-height:1;padding:0 .1rem}
+  .chip .x:hover{color:var(--fox)}
+  .foxdot{width:16px;height:16px;flex:0 0 auto}
+  .gsel{width:100%;border:1.5px solid var(--c,var(--divider));border-radius:7px;padding:.35rem 1.4rem .35rem .45rem;font-size:.8rem;background:var(--card);color:var(--ink);font-weight:700;cursor:pointer;text-overflow:ellipsis;overflow:hidden}
+  /* legend */
+  .legend{font-size:.8rem;color:var(--green);margin:.15rem 0}
+  .legend b{color:var(--ink)}
+  /* picker popover */
+  .picker{position:absolute;z-index:90;background:var(--card);border:1px solid var(--divider);border-radius:10px;
+    box-shadow:6px 9px 32px rgba(43,43,43,.18);min-width:268px;max-width:320px;max-height:380px;overflow:auto;padding:.35rem}
+  .picker .grp{display:inline-block;font-size:.75rem;color:var(--blue);background:#f1f7ff;border-radius:5px;padding:.13rem .55rem;margin:.4rem .25rem .15rem;letter-spacing:.02em;font-weight:700}
+  .picker .grp--sug{color:#9a6b00;background:#fff7e6}
+  .picker .opt--sug{font-weight:600}
+  .picker .opt--sug:hover{background:#fff7e6}
+  .picker .opt{padding:.4rem .6rem;border-radius:6px;cursor:pointer;font-size:.85rem;line-height:1.3}
+  .picker .opt:hover{background:var(--blue-l)}
+  .picker .opt .opt-ex{display:block;font-size:.75rem;color:var(--grey);font-weight:400;margin-top:.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .picker .opt .opt-desc{display:block;font-size:.75rem;color:var(--blue);font-weight:400;margin-top:.05rem}
+  /* settings */
+  .sec{border:1px solid var(--divider);border-radius:12px;padding:0 1.1rem 1rem;margin-bottom:1rem;background:var(--card)}
+  .sec-head{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem .75rem;padding:1rem 0}
+  .sec-icon{width:34px;height:34px;border-radius:9px;background:var(--chip);color:var(--fox);display:grid;place-items:center;flex:none}
+  .sec-icon svg{width:19px;height:19px}
+  .sec-title{font-size:1.08rem;font-weight:700;letter-spacing:-.01em}
+  .sec-pill{margin-left:auto;font-size:.75rem;color:var(--grey);background:var(--surface-2);border:1px solid var(--divider);border-radius:999px;padding:.12rem .6rem;font-weight:700;white-space:nowrap}
+  .sec-warn{margin-left:auto;display:inline-flex;align-items:center;gap:.4rem;font-size:.75rem;font-weight:600;line-height:1.35;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;border-radius:7px;padding:.22rem .6rem}
+  .sets{display:flex;flex-direction:column}
+  .set{display:flex;align-items:center;gap:1rem;padding:.75rem 0;border-top:1px solid var(--divider)}
+  .set-l{flex:1;min-width:0}
+  .set-name{font-size:.9rem;font-weight:600}
+  .set-hint{font-size:.8rem;color:var(--grey);margin-top:.15rem;line-height:1.4}
+  .set-c{flex:none;display:flex;align-items:center}
+  .set--block{flex-direction:column;align-items:stretch}
+  .set-select{min-width:200px;max-width:240px;border:1px solid var(--divider);border-radius:7px;padding:.5rem .65rem;font-size:.9rem;background:var(--card);color:var(--ink);cursor:pointer}
+  .set-select:focus{outline:none;border-color:var(--fox)}
+  .orderlist{margin-top:.6rem;display:flex;flex-direction:column;gap:.15rem;max-width:340px}
+  .ord-item{display:flex;align-items:center;gap:.55rem;border:none;border-radius:7px;padding:.34rem .4rem;background:transparent}
+  .ord-item:not(:last-child){border-bottom:1px solid var(--divider)}
+  .ord-rank{width:1.3rem;height:1.3rem;border-radius:50%;background:var(--blue-l);color:var(--blue);display:grid;place-items:center;font-size:.72rem;font-weight:700;flex:none}
+  .ord-name{flex:1;font-size:.85rem;color:var(--ink)}
+  .ord-btns{display:inline-flex;gap:.2rem}
+  .ord-btns button{border:1px solid var(--divider);background:var(--card);border-radius:5px;width:1.6rem;height:1.6rem;cursor:pointer;font-size:.65rem;color:var(--grey);line-height:1;transition:border-color .12s,color .12s}
+  .ord-btns button:hover:not(:disabled){border-color:var(--blue);color:var(--blue)}
+  .ord-btns button:disabled{opacity:.3;cursor:default}
+  @media(max-width:560px){.set{flex-direction:column;align-items:stretch;gap:.4rem}.set-c{justify-content:flex-start}.set-select{max-width:none;width:100%}}
+  /* summary / sum panel */
+  .grid2{display:grid;grid-template-columns:1fr;gap:1rem}
+  @media(min-width:820px){.grid2{grid-template-columns:1.1fr .9fr}}
+  .field{margin-bottom:.9rem} .field label{display:block;font-size:.85rem;margin-bottom:.3rem;color:var(--grey)}
+  input[type=text],input[type=password],input[type=number],select.std{width:100%;border:1px solid var(--divider);border-radius:6px;
+    padding:.6rem .75rem;font-size:.9rem;background:var(--card);color:var(--ink)}
+  input:focus,select:focus{outline:none;border-color:var(--fox)}
+  .scope{display:flex;flex-direction:column;gap:.6rem;margin:.2rem 0 1rem}
+  .scope label{border:1.5px solid var(--divider);border-radius:8px;padding:.75rem .9rem;cursor:pointer;display:flex;gap:.5rem;align-items:center}
+  .scope label.sel{border-color:var(--fox);background:var(--chip)}
+  .sum{background:var(--surface-2);border:1px solid var(--divider);border-radius:10px;padding:1.2rem 1.3rem;transition:opacity .15s}
+  .sum__head{font-weight:700;margin-bottom:.4rem}
+  .sum table{width:100%;border-collapse:collapse}
+  .sum td{padding:.5rem .2rem;vertical-align:top;border:0;font-size:.9rem}
+  .sum td:last-child{text-align:right;font-weight:700}
+  .sum td small{display:block;color:var(--grey-l);font-weight:400;font-size:.75rem}
+  .sum .divider td{padding:0} .sum .divider hr{border:0;border-top:1px solid var(--divider);margin:.5rem 0}
+  .sum .total td{font-size:1.3rem;padding-top:.75rem}
+  .sum .total td i{font-style:normal;font-weight:400;font-size:.85rem;color:var(--grey)}
+  /* misc boxes */
+  .progress{height:14px;background:var(--surface-2);border-radius:999px;overflow:hidden;margin:.6rem 0}
+  .progress>div{height:100%;width:0;transition:width .45s ease;border-radius:999px;
+    background-image:linear-gradient(90deg,var(--fox) 0%,#ff7a45 50%,var(--fox) 100%);
+    background-size:40px 100%;animation:progmove 1s linear infinite}
+  @keyframes progmove{0%{background-position:0 0}100%{background-position:40px 0}}
+  @media(prefers-reduced-motion:reduce){.progress>div{animation:none}}
+  .warnbox{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:.6rem .85rem;font-size:.85rem;margin:.5rem 0}
+  .errbox{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:8px;padding:.6rem .85rem;font-size:.85rem;margin:.5rem 0}
+  .okbox{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:8px;padding:.6rem .85rem;font-size:.85rem;margin:.5rem 0}
+  .donebox{display:flex;align-items:center;gap:.5rem;background:var(--card);border:1px solid var(--divider);border-radius:8px;padding:.6rem .85rem;font-size:.85rem;color:var(--ink);margin:.5rem 0}
+  .donebox .dot{width:.55rem;height:.55rem;border-radius:50%;background:#3fb950;flex:none}
+  .infoline{background:var(--blue-l);border:1px solid #cfe2fb;color:#1e40af;border-radius:8px;padding:.55rem .8rem;font-size:.85rem;margin:.2rem 0 1rem}
+  .footer-actions{display:flex;justify-content:space-between;margin-top:1.5rem}
+  .fileitem{display:flex;align-items:center;gap:.7rem;border:1px solid var(--divider);border-radius:10px;
+    padding:.7rem .9rem;margin-bottom:.5rem;cursor:pointer}
+  .fileitem:hover{border-color:var(--blue);background:var(--blue-l)} .fileitem.sel{border-color:var(--blue);background:var(--blue-l)}
+  .fileitem .fico{width:24px;height:24px;color:var(--grey);flex:none}
+  .fileitem.sel .fico{color:var(--blue)}
+  .fileitem .fname{flex:1;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fileitem .last{font-size:.72rem;color:var(--blue);font-weight:700;border:1px solid var(--blue);border-radius:999px;padding:.05rem .5rem;flex:none}
+  .fileitem .chev{color:var(--grey-ll);flex:none}
+  .histhead{font-size:.85rem;font-weight:700;color:var(--ink);margin:0 0 .6rem}
+  /* File step - centered column (heading and box together) */
+  .filewrap{max-width:720px;margin:0 auto}
+  /* large dropzone */
+  .dropbig{position:relative;border:2px dashed var(--divider);border-radius:14px;background:transparent;
+    padding:2.4rem 2rem;text-align:center;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s;
+    display:flex;flex-direction:column;align-items:center;gap:.45rem;min-height:220px;justify-content:center}
+  .dropbig:hover,.dropbig.over{border-color:var(--blue);background:var(--blue-l);box-shadow:0 6px 22px rgba(44,131,238,.10)}
+  .dropbig .ico{width:46px;height:46px;color:var(--blue);margin-bottom:.3rem}
+  .dropbig__title{font-weight:700;font-size:1.08rem;color:var(--ink)}
+  .dropbig__hint{font-size:.85rem;color:var(--grey)}
+  .dropbig.is-uploading{cursor:default;border-style:solid;border-color:var(--blue);background:var(--blue-l)}
+  .dropbig.over{border-color:var(--blue);border-width:3px;background:var(--blue-l);box-shadow:0 8px 28px rgba(44,131,238,.20);transform:scale(1.01)}
+  .dropbig{transition:border-color .12s,background .12s,box-shadow .12s,transform .12s}
+  .spinner{width:36px;height:36px;border-radius:50%;border:3px solid var(--divider);border-top-color:var(--blue);animation:spin .8s linear infinite;margin-bottom:.3rem}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* openpyxl install notice */
+  .xlsxbox{border:1px solid var(--blue);background:var(--blue-l);border-radius:10px;padding:.85rem 1rem;margin-top:1rem;
+    display:flex;align-items:center;gap:.8rem}
+  .xlsxbox .t{flex:1;font-size:.85rem;color:var(--ink)}
+  @media(prefers-reduced-motion:reduce){.spinner{animation:none}}
+  table.prev{border-collapse:collapse;width:100%;font-size:.85rem;table-layout:fixed}
+  table.prev th,table.prev td{border:1px solid var(--divider);padding:.35rem .5rem;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  table.prev th{background:var(--surface-2)}
+  .dl{display:inline-block;margin:.2rem .6rem .2rem 0;color:var(--blue);font-weight:700}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;place-items:center;z-index:80}
+  .modal.open{display:grid}
+  .modal .box{background:var(--card);border-radius:12px;max-width:540px;width:92%;max-height:88vh;overflow:auto;padding:1.4rem 1.5rem}
+  #countriesModal .box{max-width:680px}
+  .cm-head{display:flex;align-items:center;gap:.5rem;margin:0 0 .2rem}
+  .cm-head h2{margin:0;font-size:1.15rem}
+  .cm-x{margin-left:auto;border:1px solid var(--divider);background:var(--card);border-radius:6px;cursor:pointer;
+        font-size:1rem;line-height:1;padding:.25rem .5rem;color:var(--grey)}
+  .cm-x:hover{color:var(--ink)}
+  .cm-intro{color:var(--grey);font-size:.84rem;margin:.2rem 0 1rem}
+  .cmrow{border:1px solid var(--divider);border-radius:10px;padding:.7rem .85rem;margin:.5rem 0}
+  .cmrow__h{display:flex;align-items:center;gap:.5rem;font-weight:700;margin-bottom:.5rem}
+  .cmrow__h .ep{margin-left:auto;color:var(--grey);font-size:.74rem;font-weight:600}
+  .ww{display:inline-flex;align-items:center;gap:.4rem;color:#1a7f37;background:rgba(63,185,80,.12);
+      border:1px solid rgba(63,185,80,.4);border-radius:20px;padding:.18rem .7rem;font-size:.82rem;font-weight:700}
+  .cflags{display:flex;flex-wrap:wrap;gap:.35rem}
+  .cchip{display:inline-flex;align-items:center;gap:.35rem;border:1px solid var(--divider);border-radius:7px;
+         padding:.16rem .5rem;font-size:.78rem;background:var(--bg)}
+  .cchip .fl{font-size:.95rem;line-height:1}
+  .cchip .cc{color:var(--grey);font-size:.7rem}
+  .cm-foot{margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--divider);font-size:.78rem;color:var(--grey)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+  .toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:.6rem 1rem;border-radius:8px;font-size:.85rem;opacity:0;transition:.2s;z-index:90}
+  .toast.show{opacity:1}
+  .step2{transition:opacity .2s}
+  .sumleft{display:flex;flex-direction:column}
+  .sumleft .step2{flex:1;display:flex;flex-direction:column}
+  .sumleft .logbar{margin-top:auto}
+  .step2.locked{opacity:.4;pointer-events:none;filter:saturate(.55)}
+  .logbar{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;background:var(--blue-l);border:1px solid #cfe2fb;color:#1e40af;border-radius:9px;padding:.55rem .8rem;font-size:.85rem;margin-top:1rem}
+  .logbar label{display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;font-weight:700;white-space:nowrap}
+  .logbar input{appearance:auto;-webkit-appearance:auto;width:15px;height:15px;cursor:pointer;accent-color:var(--blue);margin:0;flex:0 0 auto}
+  .logbar .hint{font-size:.78rem;font-weight:400;opacity:.8;white-space:nowrap}
+  .seclbl{font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--grey);margin:0 0 .5rem}
+  .seclbl--active{color:var(--ink)}
+  .keymask{display:inline-block;color:var(--grey);background:var(--pill);border-radius:6px;padding:.12rem .5rem;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.08em;font-size:.85em;vertical-align:baseline}
+  .field+.seclbl,.scope+.seclbl{margin-top:1.4rem}
+  .cardsep{height:1px;background:var(--divider);margin:1.3rem 0}
+  .infodot{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:.45rem;
+    border-radius:50%;background:var(--blue-l);color:var(--blue);border:1px solid #cfe2fb;font-size:.7rem;font-weight:700;font-style:normal;
+    cursor:help;position:relative;vertical-align:middle;text-transform:none;letter-spacing:0}
+  .infodot .tip{position:absolute;left:0;top:calc(100% + 9px);width:290px;background:#fff;color:var(--ink);
+    border:1px solid var(--divider);border-radius:10px;box-shadow:0 10px 30px rgba(19,19,19,.14);
+    padding:.75rem .9rem;font-size:.78rem;font-weight:400;line-height:1.5;text-transform:none;letter-spacing:0;
+    text-align:left;opacity:0;visibility:hidden;transform:translateY(-3px);transition:opacity .14s,transform .14s;z-index:60}
+  .infodot .tip::before{content:"";position:absolute;left:4px;top:-5px;width:9px;height:9px;background:#fff;
+    border-left:1px solid var(--divider);border-top:1px solid var(--divider);transform:rotate(45deg)}
+  .infodot .tip::after{content:"";position:absolute;left:0;top:-11px;width:46px;height:12px}
+  .infodot:hover .tip,.infodot:focus .tip,.infodot .tip:hover{opacity:1;visibility:visible;transform:translateY(0)}
+  .infodot .tip b{color:var(--ink);font-weight:700}
+  .infodot .tip a{color:var(--blue);font-weight:600}
+  .infodot .tip ol{margin:.45rem 0 0;padding-left:1.15rem}
+  .infodot .tip li{margin:.2rem 0}
+  .sum table td.ph{color:var(--grey-l)}
+  .sum .sum-note{display:flex;align-items:flex-start;gap:.45rem;margin-top:.9rem;font-size:.8rem;line-height:1.45;
+    color:#1e40af;background:var(--blue-l);border:1px solid #cfe2fb;border-radius:9px;padding:.55rem .75rem}
+  .sum .sum-note svg{flex:0 0 auto;margin-top:1px}
+  .sum table.sum-skel td:not(.ph){color:var(--ink)}
+  .brandwrap{position:relative;display:inline-block}
+  .brand__x{font-weight:700;font-size:1rem;
+    background:linear-gradient(100deg,#7fb4f5 0%,#7fb4f5 38%,#1f6fd8 50%,#7fb4f5 62%,#7fb4f5 100%);
+    background-size:240% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    animation:cleanshine 2.6s ease-in-out infinite}
+  @keyframes cleanshine{0%{background-position:130% 0}55%,100%{background-position:-30% 0}}
+  .bubbles{position:absolute;left:-2px;right:-2px;top:-11px;bottom:-2px;pointer-events:none;overflow:visible}
+  .bubbles i{position:absolute;bottom:1px;border-radius:50%;opacity:0;
+    background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.9) 0 10%,rgba(110,165,232,.72) 36%,rgba(44,131,238,.66) 70%,rgba(31,103,216,.55) 100%);
+    box-shadow:inset 0 0 2px rgba(255,255,255,.5),0 0 1px rgba(31,103,216,.45);border:.5px solid rgba(31,103,216,.4)}
+  .bubbles i:nth-child(1){left:5%;width:5px;height:5px;animation:bubL 3s ease-in infinite;animation-delay:0s}
+  .bubbles i:nth-child(2){left:14%;width:3px;height:3px;animation:bubR 2.4s ease-in infinite;animation-delay:.5s}
+  .bubbles i:nth-child(3){left:24%;width:6px;height:6px;animation:bubL 3.4s ease-in infinite;animation-delay:1.1s}
+  .bubbles i:nth-child(4){left:33%;width:4px;height:4px;animation:bubR 2.7s ease-in infinite;animation-delay:.3s}
+  .bubbles i:nth-child(5){left:43%;width:3px;height:3px;animation:bubL 2.5s ease-in infinite;animation-delay:1.6s}
+  .bubbles i:nth-child(6){left:52%;width:5px;height:5px;animation:bubR 3.1s ease-in infinite;animation-delay:.8s}
+  .bubbles i:nth-child(7){left:61%;width:4px;height:4px;animation:bubL 2.8s ease-in infinite;animation-delay:2s}
+  .bubbles i:nth-child(8){left:70%;width:6px;height:6px;animation:bubR 3.5s ease-in infinite;animation-delay:1.3s}
+  .bubbles i:nth-child(9){left:80%;width:3px;height:3px;animation:bubL 2.6s ease-in infinite;animation-delay:.6s}
+  .bubbles i:nth-child(10){left:89%;width:5px;height:5px;animation:bubR 3.2s ease-in infinite;animation-delay:1.8s}
+  .bubbles i:nth-child(11){left:96%;width:4px;height:4px;animation:bubL 2.9s ease-in infinite;animation-delay:1s}
+  @keyframes bubL{0%{transform:translate(0,9px) scale(.35);opacity:0}18%{opacity:.9}55%{transform:translate(-3px,-3px) scale(.9);opacity:.8}88%{opacity:.45}100%{transform:translate(1px,-20px) scale(1.1);opacity:0}}
+  @keyframes bubR{0%{transform:translate(0,9px) scale(.35);opacity:0}18%{opacity:.9}55%{transform:translate(3px,-3px) scale(.9);opacity:.8}88%{opacity:.45}100%{transform:translate(-1px,-20px) scale(1.1);opacity:0}}
+  @media(prefers-reduced-motion:reduce){.brand__x{animation:none;-webkit-text-fill-color:#2c83ee}.bubbles{display:none}}
+  /* ---------- inline dark validation report ---------- */
+  .vreport{background:#0d1117;color:#e6edf3;border-radius:14px;padding:1.8rem 1.9rem;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.5}
+  .vreport .vr-head{display:flex;align-items:center;gap:.6rem;font-size:1.35rem;font-weight:700;margin:0 0 .25rem}
+  .vreport .vr-sub{color:#8b949e;font-size:.85rem;margin-bottom:1.6rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+  .vreport .vr-pill{display:inline-block;padding:.12rem .6rem;border-radius:999px;font-size:.8rem;border:1px solid #2a6b4055;color:#3fb950}
+  .vreport .vr-pill.warn{border-color:#d2992255;color:#d29922}
+  .vreport .vr-card{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:1.25rem 1.4rem;margin-bottom:1.1rem}
+  .vreport .vr-h{font-size:.75rem;text-transform:uppercase;letter-spacing:.09em;color:#8b949e;margin:0 0 1.1rem;font-weight:600}
+  .vreport .vr-kpis{display:flex;gap:2.6rem;flex-wrap:wrap}
+  .vreport .vr-kpi b{display:block;font-size:1.7rem;font-weight:700;line-height:1.05}
+  .vreport .vr-kpi b.ok{color:#3fb950}.vreport .vr-kpi b.err{color:#f85149}
+  .vreport .vr-kpi span{font-size:.8rem;color:#8b949e}
+  .vreport .vr-val{color:#8b949e;font-size:.85rem;margin-top:1.1rem}
+  .vreport .vr-bar{display:grid;grid-template-columns:160px 1fr 120px;align-items:center;gap:.9rem;margin:.5rem 0}
+  .vreport .vr-track{height:16px;background:#0d1117;border:1px solid #21262d;border-radius:6px;overflow:hidden}
+  .vreport .vr-fill{height:100%}
+  .vreport .vr-barval{text-align:right;font-size:.85rem}.vreport .vr-barval .pc{color:#8b949e}
+  .vreport .vr-file{display:inline-block;background:#0d1117;border:1px solid #30363d;border-radius:5px;padding:.1rem .5rem;color:#e6edf3}
+  .vreport .vr-note{color:#8b949e;font-size:.85rem;margin-top:.75rem}
+  .vreport .vr-foot{text-align:center;color:#6e7681;font-size:.8rem;margin-top:1.4rem;line-height:1.5}
+  .vractions{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1.2rem}
+
+  .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.75rem;margin:.9rem 0}
+  .stat{border:1px solid var(--divider);border-radius:10px;padding:.75rem .85rem;background:var(--card)}
+  .stat b{display:block;font-size:1.5rem;line-height:1.1}
+  .stat span{font-size:.75rem;color:var(--grey);text-transform:uppercase;letter-spacing:.03em}
+  .stat--err b{color:var(--err)}
+  .resultbtns{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.4rem}
+  .resultbtn{text-decoration:none;display:inline-flex;align-items:center}
+  .maskinput{-webkit-text-security:disc;text-security:disc;letter-spacing:.06em}
+  .runstats{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:.75rem;font-size:.85rem}
+  .runstats b{color:var(--ink)}
+  .infobox{background:var(--blue-l);border:1px solid #cfe2fb;color:#1e40af;border-radius:9px;padding:.65rem .9rem;font-size:.85rem;margin-top:.9rem}
+  .rep-sec{border:1px solid var(--divider);border-radius:12px;padding:1.1rem 1.25rem;margin-top:1rem;background:var(--card)}
+  .rep-h{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--grey);font-weight:700;margin-bottom:.9rem}
+  .kpis{display:flex;gap:2.4rem;flex-wrap:wrap}
+  .kpi b{display:block;font-size:1.55rem;font-weight:700;line-height:1.1}
+  .kpi b.err{color:var(--err)} .kpi span{font-size:.8rem;color:var(--grey)}
+  .bars{display:flex;flex-direction:column;gap:.6rem}
+  .barrow{display:grid;grid-template-columns:170px 1fr 120px;align-items:center;gap:.85rem}
+  .barlbl{font-size:.85rem}
+  .bartrack{height:14px;background:var(--surface-2);border-radius:7px;overflow:hidden}
+  .barfill{height:100%;border-radius:7px;transition:width .4s ease}
+  .barval{font-size:.85rem;text-align:right}
+  .outrow{padding:.22rem 0;font-size:.9rem}
+  .outname{color:var(--blue);text-decoration:none;font-weight:600}
+  .footnote{text-align:center;color:var(--grey);font-size:.8rem;margin:1.4rem 0 .3rem;padding:0 1rem;line-height:1.5}
+  @media(max-width:640px){.barrow{grid-template-columns:110px 1fr 86px;gap:.5rem}.kpis{gap:1.4rem}}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <a class="brand" id="brandLink" href="https://foxentry.com/cs/?utm_source=cleaner&utm_medium=app&utm_campaign=data_cleaner" target="_blank" rel="noopener"><img class="logo" src="data:image/svg+xml,%3Csvg%20version%3D%271.1%27%20id%3D%27Vrstva_1%27%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20xmlns%3Axlink%3D%27http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%27%20x%3D%270px%27%20y%3D%270px%27%20viewBox%3D%270%200%201015.2%20236.2%27%20style%3D%27enable-background%3Anew%200%200%201015.2%20236.2%3B%27%20xml%3Aspace%3D%27preserve%27%3E%20%3Cstyle%20type%3D%27text%2Fcss%27%3E%20.st0%7Bfill%3A%23E74600%3B%7D%20.st1%7Bfill%3A%23CC3000%3B%7D%20.st2%7Bfill%3A%23FF6102%3B%7D%20.st3%7Bfill%3A%23493A6D%3B%7D%20%3C%2Fstyle%3E%20%3Cg%20id%3D%27Obd%C3%A9ln%C3%ADk_1_kopie_3_2_%27%3E%20%3Cg%20id%3D%27XMLID_42_%27%3E%20%3Cpath%20id%3D%27XMLID_3_%27%20class%3D%27st0%27%20d%3D%27M115.3%2C121.5c7.7%2C18.5%2C33.8%2C54.7%2C38.9%2C61c3.6%2C4.5%2C79.2%2C53.4%2C82.1%2C54.5V0.7%27%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%27Obd%C3%A9ln%C3%ADk_1_kopie_2_2_%27%3E%20%3Cg%20id%3D%27XMLID_49_%27%3E%20%3Cpolygon%20id%3D%27XMLID_59_%27%20class%3D%27st1%27%20points%3D%27115.3%2C121.5%20115.1%2C121.9%2071.7%2C185.6%20114.3%2C236.9%20236.3%2C236.9%20%27%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%27Obd%C3%A9ln%C3%ADk_1_kopie_4_2_%27%3E%20%3Cg%20id%3D%27XMLID_29_%27%3E%20%3Cpath%20id%3D%27XMLID_41_%27%20class%3D%27st2%27%20d%3D%27M43.9%2C155.4C14.1%2C185.1%2C0%2C236.9%2C0%2C236.9h115.3V121.5C115.3%2C121.5%2C71.7%2C127.6%2C43.9%2C155.4z%27%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%27Obd%C3%A9ln%C3%ADk_1_2_%27%3E%20%3Cg%20id%3D%27XMLID_43_%27%3E%20%3Cpolygon%20id%3D%27XMLID_53_%27%20class%3D%27st2%27%20points%3D%27115.3%2C0.7%20115.3%2C121.5%20236.3%2C121.5%20%27%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%27foxentry_kopie%27%3E%20%3Cg%20id%3D%27XMLID_104_%27%3E%20%3Cpath%20id%3D%27XMLID_105_%27%20class%3D%27st3%27%20d%3D%27M368.1%2C97.9h-16.7V82.8c0-4.1%2C0.7-7.1%2C2.2-9.1c1.3-1.9%2C3.6-2.8%2C6.8-2.8%20c0.6%2C0%2C1.7%2C0.1%2C3.5%2C0.4c1.7%2C0.4%2C3.1%2C0.9%2C4.2%2C1.3V47.1c-1.5-0.4-4-0.8-7.5-1.4c-3.3-0.2-5.3-0.4-6.1-0.4c-12%2C0-21%2C2.8-26.9%2C8.3%20c-6%2C5.7-9%2C14-9%2C24.9v19.4h-14.3v23.6h14.3v71.1h32.8v-71.1h16.7V97.9z%20M473.5%2C145.5c0-6.9-1.3-13.5-4-19.6%20c-2.5-6.3-6.3-11.8-11.5-16.5c-4.9-4.8-10.6-8.4-17.1-11c-6.2-2.4-13-3.6-20.3-3.6c-7.4%2C0-14.2%2C1.2-20.3%2C3.6%20c-6.4%2C2.6-12.1%2C6.2-17.1%2C11c-5.1%2C4.8-8.8%2C10.3-11.3%2C16.5c-2.7%2C6.1-4%2C12.7-4%2C19.6c0%2C7.1%2C1.3%2C13.6%2C4%2C19.4%20c2.3%2C6.1%2C6.1%2C11.6%2C11.3%2C16.6c5.2%2C5%2C10.9%2C8.7%2C17.1%2C11.1c6.1%2C2.4%2C12.8%2C3.7%2C20.3%2C3.7c7.4%2C0%2C14.2-1.2%2C20.3-3.7%20c5.9-2.3%2C11.6-6%2C17.1-11.2c4.9-4.6%2C8.7-10.1%2C11.5-16.5C472.2%2C159%2C473.5%2C152.5%2C473.5%2C145.5z%20M435.2%2C162.1%20c-3.8%2C4.1-8.6%2C6.2-14.6%2C6.2c-6%2C0-10.9-2.1-14.6-6.2c-3.4-4-5.2-9.5-5.2-16.5c0-7.2%2C1.8-12.8%2C5.3-16.7c3.5-4.1%2C8.3-6.1%2C14.4-6.1%20c5.9%2C0%2C10.8%2C2%2C14.4%2C6.1c3.6%2C4.1%2C5.3%2C9.6%2C5.3%2C16.7C440.3%2C152.4%2C438.6%2C157.9%2C435.2%2C162.1z%20M567.6%2C97.9h-37.8l-9%2C16.1%20c-1.3%2C2.4-2.3%2C4.6-3.1%2C6.6c-0.8%2C2.4-1.3%2C4-1.5%2C4.8c-0.1-0.2-0.3-0.8-0.6-1.7c-0.3-0.9-0.7-1.9-1-3c-0.4-1.1-1.4-3.3-3.1-6.6%20l-8.8-16.1h-36.5l31.9%2C44l-37.2%2C50.7h37l14-23.8c1.2-1.8%2C2.1-3.7%2C2.7-5.5c0.5-1.1%2C1.2-3.1%2C2-5.8c0.3%2C0.9%2C0.6%2C2%2C0.9%2C3.1%20c0.3%2C1.1%2C0.6%2C2%2C0.8%2C2.7c1%2C2.3%2C2%2C4.1%2C2.9%2C5.5l14.2%2C23.8h37.7l-37.9-50.7L567.6%2C97.9z%20M650.2%2C109.6c-9.1-9.8-21.4-14.7-37-14.7%20c-15.3%2C0-27.9%2C4.8-37.9%2C14.5c-9.9%2C9.9-14.9%2C22.2-14.9%2C36.9c0%2C15.1%2C5%2C27.1%2C14.9%2C36.1c10%2C9.3%2C23.3%2C13.9%2C39.8%2C13.9%20c11.1%2C0%2C20.4-2%2C28-6c7.7-3.9%2C13-9.5%2C15.9-16.7l-25.1-10.1c-1.6%2C3.6-4.3%2C6.4-7.9%2C8.4c-3.6%2C1.9-7.8%2C2.9-12.8%2C2.9%20c-6.9%2C0-12.1-2-15.8-6c-3.5-3.9-5.3-9.5-5.5-16.9h72v-1.6c0-8.6-1.1-16.3-3.4-23C658.2%2C120.6%2C654.8%2C114.7%2C650.2%2C109.6z%20M592.6%2C133.1c0.9-5.6%2C3-10.1%2C6.5-13.4c3.3-2.9%2C7.6-4.4%2C12.9-4.4c5.1%2C0%2C9.3%2C1.7%2C12.8%2C5c3.5%2C3.3%2C5.5%2C7.6%2C6.1%2C12.8H592.6z%20M768.3%2C106.3c-2.9-3.6-6.8-6.5-11.6-8.6c-4.8-1.9-10.3-2.8-16.5-2.8c-8.2%2C0-15.1%2C1.8-20.9%2C5.3c-5.9%2C3.8-11.1%2C9.4-15.4%2C16.9V97.9%20h-30.6v94.7h32.8v-39.8c0-11.5%2C1.6-19.8%2C4.8-24.9c3.2-5.1%2C8.3-7.7%2C15.2-7.7c5.5%2C0%2C9.4%2C1.7%2C11.9%2C5.2c2.4%2C3.3%2C3.6%2C8.8%2C3.6%2C16.5v50.7%20h33.6v-54.2c0-8.5-0.5-15.3-1.6-20.5C772.8%2C113.8%2C771%2C110%2C768.3%2C106.3z%20M827.4%2C69.7h-33.2v28.2h-14.2v23.6h14.2l0.2%2C71.1h33v-71.1%20h14V97.9h-14V69.7z%20M979.5%2C97.9l-13.4%2C34.2c-1.3%2C3.1-2.2%2C5.7-2.7%2C7.9c-0.8%2C2.5-1.3%2C4.9-1.7%2C7.1c-0.5-2.3-1.1-4.6-1.8-6.9%20c-0.5-2.3-1.4-4.9-2.7-8.1l-13.2-34.2h-11.3c-0.9-0.1-13.3-1.7-13.8-1.7c-0.6%2C0-1.2-0.1-1.9-0.1c-0.9-0.1-2.2-0.2-4-0.2%20c-8%2C0-14.8%2C2-20.5%2C6.1c-5.5%2C4-9.9%2C10.1-13.2%2C18.3V97.9h-31.5v94.7h33.2v-39.2c0-9.1%2C2.2-16.2%2C6.6-21.1c4.4-5%2C10.7-7.5%2C18.8-7.5%20c1.2%2C0%2C3.1%2C0%2C5.5%2C0.4c4.6%2C0.7%2C7.4%2C1.9%2C9.5%2C2.7l23.9%2C50.2l-27.4%2C58.1h37.1l60.4-138.3H979.5z%27%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E" alt="Foxentry"><span class="brandwrap"><span class="brand__x">Data Cleaner</span><span class="bubbles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></span></a>
+    <div class="steps" id="steps"></div>
+    <div class="top-actions">
+      <button class="icon-btn" id="countriesLink" data-t="countries_link" onclick="openCountries()" style="font-size:.8rem;font-weight:700;padding:.32rem .62rem">Supported countries</button>
+      <a class="icon-btn" id="logsLink" href="/logs" target="_blank" rel="noopener" data-t="logs_link" style="text-decoration:none;font-size:.8rem;font-weight:700;padding:.32rem .62rem">Logs</a>
+      <a class="icon-btn" id="manualLink" href="https://foxentry.com/cs/manual?utm_source=cleaner&utm_medium=app&utm_campaign=data_cleaner" target="_blank" rel="noopener" data-t="manual" style="text-decoration:none;font-size:.8rem;font-weight:700;padding:.32rem .62rem">Manual</a>
+      <div class="lang" id="lang"></div>
+      <button class="icon-btn" id="gear" title="Advanced" onclick="openConfig()">&#9881;</button>
+    </div>
+  </div>
+</header>
+
+<main id="main"></main>
+
+<!-- Supported countries modal -->
+<div class="modal" id="countriesModal" onclick="if(event.target===this)closeCountries()">
+  <div class="box" id="countriesBox"></div>
+</div>
+
+<!-- Advanced config modal -->
+<div class="modal" id="cfgModal">
+  <div class="box">
+    <h2 id="cfgTitle" style="margin-top:0">Advanced</h2>
+    <div class="field"><label data-t="c_apikey">Foxentry API key</label>
+      <input id="c_apikey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your Foxentry API key">
+      <div id="c_apikey_hint" style="font-size:.78rem;color:var(--grey);margin-top:.35rem"></div></div>
+    <div class="field"><label data-t="c_country">Default country</label>
+      <input id="c_country" type="text" value="CZ"></div>
+    <div class="row2">
+      <div class="field"><label data-t="c_inenc">Input encoding</label><input id="c_inenc" type="text" value="auto"></div>
+      <div class="field"><label data-t="c_outenc">Output encoding</label><input id="c_outenc" type="text" value="utf-8-sig"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label data-t="c_sample">Test batch size</label><input id="c_sample" type="number" value="5"></div>
+      <div class="field"><label data-t="c_timeout">Timeout (s)</label><input id="c_timeout" type="number" value="30"></div>
+    </div>
+    <div class="field"><label data-t="c_lang">Language</label>
+      <select id="c_lang" class="std"><option value="en">English</option><option value="cs">Čeština</option></select></div>
+    <div class="toggle"><span class="switch"><input type="checkbox" id="c_csv"><span class="h"></span></span><span data-t="c_csv_l">CSV injection guard</span></div>
+    <div class="footer-actions">
+      <button class="btn--ghost" onclick="closeConfig()" data-t="c_cancel">Cancel</button>
+      <button class="btn" onclick="saveConfig()" data-t="c_save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const T = {
+  en:{
+    s_file:"File", s_map:"Columns", s_set:"Settings", s_sum:"Order",
+    title_file:"Select a file to clean", lead_file:"Pick a file from the input folder or drop one here.",
+    title_map:"Match the columns you want to validate", pair_with:"Pair with Foxentry",
+    lead_map:"Each card is one column from your file. Pick the Foxentry service and field; group columns that form one record (e.g. street + city + ZIP).",
+    title_set:"Validation settings", lead_set:"Set how each type of data is checked and corrected. The defaults are sensible \u2014 the note under each option explains what it does.",
+    title_sum:"Summary & order", lead_sum:"Review the estimated price and time, enter your API key and start.",
+    pick:"Files in the input folder", upload:"or drop a CSV / XLSX here to upload", uploading:"Uploading…", last_used:"last used",
+    drop_title:"Drag & drop your file here", drop_hint:"CSV, TSV or XLSX — or click to browse",
+    xlsx_need:"This .xlsx file needs the openpyxl library (one-time install).", xlsx_install:"Install",
+    xlsx_installing:"Installing…", xlsx_done:"openpyxl installed", xlsx_fail:"Install failed — see app.log",
+    manual:"Manual", setup_guide:"Setup", logs_link:"Logs", countries_link:"Supported countries",
+    cm_title:"Supported countries", cm_intro:"Coverage depends on the service. This tool validates via these endpoints.",
+    cm_worldwide:"Worldwide", cm_countries:"countries", cm_source:"Source: Foxentry docs, updated periodically.",
+    cm_svc_email:"Email validation", cm_svc_phone:"Phone validation", cm_svc_name:"Name validation", cm_svc_location:"Address validation", cm_svc_company:"Company validation",
+    rows:"rows", total_rows:"Total:", encoding:"Encoding", preview:"Preview", ex_label:"e.g.",
+    first_row_header:"First row is header", after_valid:"After validation:", from_doc:"In source:", in_source:"in source",
+    choose_service:"Choose service", suggested:"Suggested", group:"Group", none:"— ignore —", empty_cell:"empty",
+    why_legend:"Why these were auto-detected:",
+    next:"Continue", back:"Back",
+    scope_test:"Test batch", scope_full:"Full database", scope_first:"first {n} rows", scope_all:"all {n} rows",
+    scope_manual:"Custom amount", scope_rows_unit:"rows",
+    calls:"Validations (credits)", dedup_from:"deduplicated from {n}", credits_left:"Credits remaining", rate:"Rate (q/s)", eta:"Estimated time",
+    price_currency:"Currency", price_total:"Estimated total price (excl. VAT)", price_breakdown:"Per service", price_note:"Indicative price from the Foxentry Pay-As-You-Go pricelist. Real billing may differ (volume tiers, taxes).",
+    price_validation:"validation", price_enrich:"enrichment (full datascope)",
+    sum_head:"Order summary", scope_head:"What to validate", rows_label:"Rows to process",
+    sum_calc:"Calculating estimate\u2026", sum_await_key:"Add your API key above \u2014 the price, credits and time are calculated automatically.",
+    api_key:"Foxentry API key",
+    key_help_aria:"How to get a Foxentry API key",
+    key_help:'<b>How to get an API key</b><ol><li>Sign up at <a href="https://app.foxentry.com/en/registration?utm_source=cleaner&utm_medium=app&utm_campaign=data_cleaner" target="_blank" rel="noopener">app.foxentry.com</a> (free, 100 test credits).</li><li>Create a project and choose <b>Application</b>.</li><li>Open <b>Settings \u2192 API key \u2192 Create API Key</b>.</li><li>Copy the key and paste it here.</li></ol>', api_key_ph:"Paste your Foxentry API key", api_key_save:"Save key", api_key_missing:"Enter your Foxentry API key to start.", key_saved:"API key saved",
+    resume:"Resuming from row {n}.", alldone:"This file is already fully validated.", warn_credits:"This may use more credits than you have. The run will stop and can resume later.",
+    run_btn:"Start validation", running:"Validation running…", done:"Done", interrupted:"Interrupted (run again to resume)",
+    log_run:"Log requests for this run", log_run_hint:"— saves full request & response to logs/ (API key masked).",
+    prog_current:"Now validating row", prog_validations:"validations done", prog_eta:"remaining",
+    prog_resumed:"Resuming validation from row {n} (earlier rows are already done).",
+    api_key_saved:"API key saved", api_key_change:"Change",
+    results:"Results", open:"Open", open_file:"Open validated file", open_report:"Open report", processed:"Rows processed", errors:"Comm. errors",
+    no_map:"Map at least one column to continue.",
+    probe_auth:"Couldn\u2019t connect to Foxentry. Use a REST API key (Settings \u2192 API Keys) and make sure this machine\u2019s origin/IP is allowed for the key.", probe_credit:"Not enough credits — top up in your project administration.",
+    c_apikey:"Foxentry API key", c_apikey_ph:"Paste your Foxentry API key", c_apikey_none:"Not set yet — paste your key to start validating.", c_apikey_replace:"leave empty to keep, or paste a new one to replace",
+    c_country:"Default country", c_sample:"Test batch size", c_timeout:"Timeout (s)",
+    c_inenc:"Input encoding", c_outenc:"Output encoding", c_csv_l:"CSV injection guard", c_lang:"Language",
+    c_save:"Save", c_cancel:"Cancel", saved:"Saved", settings:"Advanced",
+    restored:"Restored your last setup for this file.",
+    res_by_type:"Results by type", summary_lbl:"Summary", remaining_lbl:"remaining",
+    lbl_rows:"rows processed", lbl_api_calls:"API calls", lbl_run_time:"run time", lbl_comm_err:"comm. errors",
+    validations_label:"Validations:", output_files:"Output files",
+    out_desc_csv:"results (CSV, UTF-8)", out_desc_xlsx:"results (Excel)", out_desc_report:"validation report (HTML)",
+    out_note:"Columns with the _updated suffix contain values after correction. The _proposal column is the technical code from the Foxentry API.",
+    gen_locally:"Generated locally. Your data did not leave this computer except for individual validation queries to api.foxentry.com.",
+    resume_note:"You can close this window at any time \u2014 when you run the app again, validation resumes exactly where it stopped.",
+    rep_title:"Validation report", rep_file:"File", dl_db:"Download database",
+    rep_value_title:"Foxentry value", rep_in_err:"Input error rate", rep_out_err:"Output error rate", rep_rescued:"Data rescued", rep_enriched_kpi:"Data points added", rep_enrich_title:"Enriched data (per service)", rep_enrich_unit:"data points",
+    rep_value_summary:"Foxentry lowered the data error rate from {inp} % to {out} % — it automatically fixed {n} records ({pct} %) that would otherwise stay wrong.",
+    rep_value_clean:"Your data was already clean — no errors to fix on input.",
+    rep_ben_email:"Invalid e-mail addresses won't be contacted \u2192 higher deliverability and a better sender reputation.",
+    rep_ben_location:"Corrected postal addresses cut undelivered and returned shipments.",
+    rep_ben_phone:"Validated phone numbers mean fewer failed calls and SMS.",
+    rep_ben_name:"Properly formatted names (case, vocative) improve personalization.",
+    rep_ben_company:"Verified company data (reg. no. / VAT) makes invoicing and records more accurate.",
+    revalidate:"Re-validate this file", new_file:"Validate a new file"
+  },
+  cs:{
+    s_file:"Soubor", s_map:"Sloupce", s_set:"Nastavení", s_sum:"Objednávka",
+    title_file:"Vyberte soubor k pročištění", lead_file:"Vyberte soubor ze složky input nebo ho sem přetáhněte.",
+    title_map:"Spárujte sloupce, které chcete validovat", pair_with:"Spárujte s Foxentry",
+    lead_map:"Každá karta je jeden sloupec z vašeho souboru. Vyberte službu a pole Foxentry; sloupce tvořící jeden záznam (např. ulice + obec + PSČ) dejte do stejné skupiny.",
+    title_set:"Nastavení validace", lead_set:"Nastavte, jak se má každý typ dat ověřit a opravit. Výchozí hodnoty jsou rozumné \u2014 popisek pod každou volbou vysvětlí, co dělá.",
+    title_sum:"Souhrn a objednávka", lead_sum:"Zkontrolujte odhadovanou cenu a čas, zadejte API klíč a spusťte.",
+    pick:"Soubory ve složce input", upload:"nebo sem přetáhněte CSV / XLSX k nahrání", uploading:"Nahrávám…", last_used:"naposledy",
+    drop_title:"Přetáhněte soubor sem", drop_hint:"CSV, TSV nebo XLSX — nebo klikněte pro výběr",
+    xlsx_need:"Tento .xlsx soubor potřebuje knihovnu openpyxl (jednorázová instalace).", xlsx_install:"Nainstalovat",
+    xlsx_installing:"Instaluji…", xlsx_done:"openpyxl nainstalován", xlsx_fail:"Instalace selhala — viz app.log",
+    manual:"Manuál", setup_guide:"Návod", logs_link:"Logy", countries_link:"Podporované země",
+    cm_title:"Podporované země", cm_intro:"Pokrytí se liší podle služby. Tento nástroj validuje přes tyto endpointy.",
+    cm_worldwide:"Celosvětově", cm_countries:"zemí", cm_source:"Zdroj: dokumentace Foxentry, průběžně aktualizováno.",
+    cm_svc_email:"Validace e-mailů", cm_svc_phone:"Validace telefonů", cm_svc_name:"Validace jmen", cm_svc_location:"Validace adres", cm_svc_company:"Validace firem",
+    rows:"řádků", total_rows:"Celkem:", encoding:"Kódování", preview:"Náhled", ex_label:"např.",
+    first_row_header:"První řádek je název", after_valid:"Po validaci:", from_doc:"Z původního dokumentu:", in_source:"ve zdroji",
+    choose_service:"Vyberte službu", suggested:"Návrhy", group:"Skupina", none:"— ignorovat —", empty_cell:"prázdná buňka",
+    why_legend:"Proč to bylo rozpoznáno takto:",
+    next:"Pokračovat", back:"Zpět",
+    scope_test:"Testovací várka", scope_full:"Celá databáze", scope_first:"prvních {n} řádků", scope_all:"všech {n} řádků",
+    scope_manual:"Vlastní počet", scope_rows_unit:"řádků",
+    calls:"Validací (kreditů)", dedup_from:"po dedup z {n}", credits_left:"Zbývá kreditů", rate:"Tempo (dotazů/s)", eta:"Odhadovaný čas",
+    price_currency:"Měna", price_total:"Odhadovaná celková cena (bez DPH)", price_breakdown:"Po službách", price_note:"Orientační cena dle ceníku Foxentry Pay As You Go. Reálná fakturace se může lišit (objemová pásma, daně).",
+    price_validation:"validace", price_enrich:"obohacení (full datascope)",
+    sum_head:"Souhrn objednávky", scope_head:"Co validovat", rows_label:"Ke zpracování",
+    sum_calc:"Po\u010d\u00edt\u00e1m odhad\u2026", sum_await_key:"Dopl\u0148te v\u00fd\u0161e API kl\u00ed\u010d \u2014 cena, kredity i \u010das se spo\u010d\u00edtaj\u00ed automaticky.",
+    api_key:"Foxentry API klíč",
+    key_help_aria:"Jak získat Foxentry API klíč",
+    key_help:'<b>Jak získat API klíč</b><ol><li>Zaregistrujte se na <a href="https://app.foxentry.com/cs/registration?utm_source=cleaner&utm_medium=app&utm_campaign=data_cleaner" target="_blank" rel="noopener">app.foxentry.com</a> (zdarma, 100 kreditů na test).</li><li>Vytvořte projekt a zvolte <b>Aplikace</b>.</li><li>Otevřete <b>Nastavení \u2192 API klíč \u2192 Vytvořit API klíč</b>.</li><li>Klíč zkopírujte a vložte sem.</li></ol>', api_key_ph:"Vložte svůj Foxentry API klíč", api_key_save:"Uložit klíč", api_key_missing:"Pro spuštění zadejte Foxentry API klíč.", key_saved:"API klíč uložen",
+    resume:"Navazujeme od řádku {n}.", alldone:"Tento soubor je už celý zvalidovaný.", warn_credits:"Může to spotřebovat víc kreditů, než máte. Běh se zastaví a později naváže.",
+    run_btn:"Spustit validaci", running:"Validace běží…", done:"Hotovo", interrupted:"Přerušeno (dalším spuštěním navážete)",
+    log_run:"Logovat requesty tohoto běhu", log_run_hint:"— uloží celý request i odpověď do logs/ (klíč maskovaný).",
+    prog_current:"Právě validuji řádek", prog_validations:"hotových validací", prog_eta:"zbývá",
+    prog_resumed:"Pokračuji ve validaci od řádku {n} (předchozí řádky jsou už hotové).",
+    api_key_saved:"API klíč uložen", api_key_change:"Změnit",
+    results:"Výsledky", open:"Otevřít", open_file:"Otevřít validovaný soubor", open_report:"Otevřít report", processed:"Zpracováno řádků", errors:"Chyb komunikace",
+    no_map:"Pro pokračování spárujte aspoň jeden sloupec.",
+    probe_auth:"Připojení k Foxentry selhalo. Použijte REST API klíč (Nastavení \u2192 API klíče) a ověřte, že je pro klíč povolená doména/IP tohoto počítače.", probe_credit:"Nedostatek kreditů — dobijte v administraci projektu.",
+    c_apikey:"Foxentry API klíč", c_apikey_ph:"Vložte svůj Foxentry API klíč", c_apikey_none:"Zatím nenastaveno — vložte klíč a můžete validovat.", c_apikey_replace:"nechte prázdné pro zachování, nebo vložte nový pro nahrazení",
+    c_country:"Výchozí země", c_sample:"Velikost testovací várky", c_timeout:"Timeout (s)",
+    c_inenc:"Kódování vstupu", c_outenc:"Kódování výstupu", c_csv_l:"Ochrana proti CSV injection", c_lang:"Jazyk",
+    c_save:"Uložit", c_cancel:"Zrušit", saved:"Uloženo", settings:"Pokročilé",
+    restored:"Obnoveno vaše poslední nastavení pro tento soubor.",
+    res_by_type:"Výsledky podle typu", summary_lbl:"Souhrn", remaining_lbl:"zbývá",
+    lbl_rows:"zpracováno řádků", lbl_api_calls:"API volání", lbl_run_time:"čas běhu", lbl_comm_err:"chyb komunikace",
+    validations_label:"Validace:", output_files:"Výstupní soubory",
+    out_desc_csv:"výsledky (CSV, UTF-8)", out_desc_xlsx:"výsledky (Excel)", out_desc_report:"report validace (HTML)",
+    out_note:"Sloupce s příponou _updated obsahují hodnoty po opravě. Sloupec _proposal je technický kód z Foxentry API.",
+    gen_locally:"Vygenerováno lokálně. Vaše data neopustila tento počítač kromě jednotlivých validačních dotazů na api.foxentry.com.",
+    resume_note:"Okno můžete kdykoli zavřít \u2014 po opětovném spuštění aplikace validace naváže přesně tam, kde skončila.",
+    rep_title:"Report validace", rep_file:"Soubor", dl_db:"Stáhnout databázi",
+    rep_value_title:"Přínos Foxentry", rep_in_err:"Chybovost na vstupu", rep_out_err:"Chybovost na výstupu", rep_rescued:"Zachráněno dat", rep_enriched_kpi:"Doplněných údajů", rep_enrich_title:"Doplněná data (podle služby)", rep_enrich_unit:"údajů",
+    rep_value_summary:"Foxentry snížil chybovost dat z {inp} % na {out} % \u2014 automaticky opravil {n} záznamů ({pct} %), které by jinak zůstaly chybné.",
+    rep_value_clean:"Vaše data byla už čistá \u2014 na vstupu nebylo co opravovat.",
+    rep_ben_email:"Na nevalidní e-maily už nemusíte posílat \u2192 vyšší doručitelnost a lepší reputace odesílatele.",
+    rep_ben_location:"Opravené poštovní adresy snižují počet nedoručených a vrácených zásilek.",
+    rep_ben_phone:"Ověřená telefonní čísla = méně neúspěšných hovorů a SMS.",
+    rep_ben_name:"Správně formátovaná jména (velikost písmen, 5. pád) zlepšují personalizaci.",
+    rep_ben_company:"Ověřené firemní údaje (IČO/DIČ) zpřesní fakturaci a evidenci.",
+    revalidate:"Znovu validovat tento soubor", new_file:"Validovat nový soubor"
+  }
+};
+let lang="en";
+function tr(k,o){let s=(T[lang]||T.en)[k]||k; if(o)for(const x in o)s=s.replace("{"+x+"}",o[x]); return s;}
+
+const PALETTE=['#f54009','#4ebf3c','#eaa000','#6637ac','#2c83ee','#db2777','#0d9488'];
+const FOX="data:image/svg+xml,%3Csvg%20version%3D%221.1%22%20id%3D%22Vrstva_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20236.3%20236.2%22%20style%3D%22enable-background%3Anew%200%200%20236.3%20236.2%3B%22%20xml%3Aspace%3D%22preserve%22%3E%20%3Cstyle%20type%3D%22text%2Fcss%22%3E%20.st0%7Bfill%3A%23E74600%3B%7D%20.st1%7Bfill%3A%23CC3000%3B%7D%20.st2%7Bfill%3A%23FF6102%3B%7D%20%3C%2Fstyle%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_3_2_%22%3E%20%3Cg%20id%3D%22XMLID_42_%22%3E%20%3Cpath%20id%3D%22XMLID_3_%22%20class%3D%22st0%22%20d%3D%22M115.3%2C120.8c7.7%2C18.5%2C33.8%2C54.7%2C38.9%2C61c3.6%2C4.5%2C79.2%2C53.4%2C82.1%2C54.5V0%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_2_2_%22%3E%20%3Cg%20id%3D%22XMLID_49_%22%3E%20%3Cpolygon%20id%3D%22XMLID_59_%22%20class%3D%22st1%22%20points%3D%22115.3%2C120.8%20115.1%2C121.2%2071.7%2C184.9%20114.4%2C236.2%20236.3%2C236.2%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_4_2_%22%3E%20%3Cg%20id%3D%22XMLID_29_%22%3E%20%3Cpath%20id%3D%22XMLID_41_%22%20class%3D%22st2%22%20d%3D%22M43.9%2C154.7C14.2%2C184.5%2C0%2C236.2%2C0%2C236.2h115.3V120.8C115.3%2C120.9%2C71.8%2C126.9%2C43.9%2C154.7z%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_2_%22%3E%20%3Cg%20id%3D%22XMLID_43_%22%3E%20%3Cpolygon%20id%3D%22XMLID_53_%22%20class%3D%22st2%22%20points%3D%22115.3%2C0%20115.3%2C120.8%20236.3%2C120.8%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E";
+const UP_ICON='<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>';
+const FILE_ICON='<svg class="fico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
+const OVERLAY_ICON='<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>';
+
+const state={services:[],files:[],file:null,header:[],rows:[],total:0,encoding:"",
+  mapping:[],settings:{},scope:"manual",limit:null,test_sample:5,has_key:false,canRun:true,step:0,config:{},
+  hasHeaderRow:true,session:{files:{}},currency:"CZK",estimate:null,xlsxNeeded:null,logRun:false,allowPip:true};
+
+const STEP_KEYS=["s_file","s_map","s_set","s_sum"];
+async function api(path,opts){const r=await fetch(path,opts);return r.json();}
+async function resumeRun(res){
+  const m=document.getElementById("main");
+  m.innerHTML=`<h1>${tr("title_sum")}</h1>`;
+  const c=document.createElement("div");c.className="card";c.id="runcard";
+  const done=(res&&res.done)||0, total=(res&&res.total)||0;
+  const pct=total?Math.round(100*done/total):0;
+  const banner=done>0?`<div class="okbox">${tr("prog_resumed",{n:done+1})}</div>`:"";
+  c.innerHTML=`<div style="font-weight:600">${tr("running")}</div>
+    <div class="progress"><div style="width:${Math.max(pct,2)}%"></div></div>
+    ${banner}<div class="infobox">${tr("resume_note")}</div>`;
+  m.appendChild(c);
+  const d=await api("/api/run",{method:"POST",headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({file:state.file,mapping:mappedPayload(),settings:state.settings,scope:state.scope,limit:state.limit,hasHeader:state.hasHeaderRow,log:state.logRun})});
+  if(!d.ok){ if((d.error||"").indexOf("running")>=0){pollRun();return;} go(3);return; }
+  pollRun();
+}
+function renderReport(p){
+  const m=document.getElementById("main");
+  const by=p.by_result||{};
+  const totalRes=Object.values(by).reduce((a,b)=>a+b,0)||1;
+  let kpis=`<div class="vr-kpis">
+    <div class="vr-kpi"><b>${p.done||0}</b><span>${tr("lbl_rows")}</span></div>
+    <div class="vr-kpi"><b>${p.calls||0}</b><span>${tr("lbl_api_calls")}</span></div>
+    <div class="vr-kpi"><b>${fmtDur(p.run_time)}</b><span>${tr("lbl_run_time")}</span></div>
+    <div class="vr-kpi"><b class="${p.errors?'err':'ok'}">${p.errors||0}</b><span>${tr("lbl_comm_err")}</span></div>
+  </div>`;
+  let val=(p.jobs&&p.jobs.length)?`<div class="vr-val">${tr("validations_label")} ${p.jobs.map(esc).join(", ")}</div>`:"";
+  let bars="";
+  Object.keys(by).sort((a,b)=>by[b]-by[a]).forEach(k=>{const pc=Math.round(1000*by[k]/totalRes)/10;
+    bars+=`<div class="vr-bar"><div>${esc(k)}</div><div class="vr-track"><div class="vr-fill" style="width:${pc}%;background:${colorForResult(k)}"></div></div><div class="vr-barval"><b>${by[k]}</b> <span class="pc">(${pc} %)</span></div></div>`;});
+  const outs=p.outputs||[];
+  const dbFile=outs.find(o=>/\.xlsx$/i.test(o))||outs.find(o=>/_result\.csv$/i.test(o))||outs[0]||"";
+  let files="";
+  outs.forEach(out=>{let d=tr("out_desc_csv");if(/\.xlsx$/i.test(out))d=tr("out_desc_xlsx");else if(/\.html$/i.test(out))d=tr("out_desc_report");
+    files+=`<div style="margin:.25rem 0"><span class="vr-file">${esc(out)}</span> <span style="color:#8b949e">\u2014 ${d}</span></div>`;});
+  const pill=p.completed?`<span class="vr-pill">${tr("done")}</span>`:`<span class="vr-pill warn">${tr("interrupted")}</span>`;
+  const file=p.file||state.file||"";
+  // value card (metrics computed by the server -> p.value)
+  let valueCard="";
+  const mv=p.value;
+  if(mv&&mv.validated){
+    const summary=(mv.input_rate>0||mv.rescued>0)
+      ? tr("rep_value_summary",{inp:mv.input_rate,out:mv.output_rate,n:mv.rescued,pct:mv.rescued_rate})
+      : tr("rep_value_clean");
+    let bens="";(mv.services||[]).forEach(k=>{const t=tr("rep_ben_"+k);if(t&&t!=="rep_ben_"+k)bens+=`<li>${esc(t)}</li>`;});
+    const bl=bens?`<ul style="margin:.6rem 0 0;padding-left:1.1rem;line-height:1.7;color:#c9d1d9">${bens}</ul>`:"";
+    valueCard=`<div class="vr-card"><div class="vr-h">${tr("rep_value_title")}</div>
+      <div class="vr-kpis">
+        <div class="vr-kpi"><b style="color:#d29922">${mv.input_rate} %</b><span>${tr("rep_in_err")}</span></div>
+        <div class="vr-kpi"><b style="color:#3fb950">${mv.output_rate} %</b><span>${tr("rep_out_err")}</span></div>
+        <div class="vr-kpi"><b style="color:#58a6ff">${mv.rescued} <span style="font-size:.55em;color:#8b949e">(${mv.rescued_rate} %)</span></b><span>${tr("rep_rescued")}</span></div>
+        ${(p.enriched>0)?`<div class="vr-kpi"><b style="color:#a371f7">${p.enriched}</b><span>${tr("rep_enriched_kpi")}</span></div>`:""}
+      </div>
+      <div class="vr-note" style="margin-top:.6rem">${esc(summary)}</div>${bl}</div>`;
+  }
+  let actions=`<a class="btn resultbtn" href="/download?name=${encodeURIComponent(dbFile)}" target="_blank">${tr("dl_db")}</a>`;
+  actions+=`<button class="btn--ghost" onclick="revalidate('${encodeURIComponent(file)}')">${tr("revalidate")}</button>`;
+  actions+=`<button class="btn--ghost" onclick="go(0)">${tr("new_file")}</button>`;
+  // enrichment card (data points added per service) — only when something was enriched
+  let enrCard="";
+  const enrSvc=p.enriched_by_service||{};
+  const enrKeys=Object.keys(enrSvc).filter(k=>enrSvc[k]>0);
+  if(enrKeys.length){
+    const emax=Math.max.apply(null,enrKeys.map(k=>enrSvc[k]))||1;
+    let erows="";
+    enrKeys.sort((a,b)=>enrSvc[b]-enrSvc[a]).forEach(k=>{const w=Math.max(2,Math.round(100*enrSvc[k]/emax));
+      erows+=`<div class="vr-bar"><div>${esc(k)}</div><div class="vr-track"><div class="vr-fill" style="width:${w}%;background:#a371f7"></div></div><div class="vr-barval"><b>${enrSvc[k]}</b> <span class="pc">${tr("rep_enrich_unit")}</span></div></div>`;});
+    enrCard=`<div class="vr-card"><div class="vr-h">${tr("rep_enrich_title")}</div>${erows}</div>`;
+  }
+  m.innerHTML=`<div class="vreport">
+    <div class="vr-head"><img src="${FOX}" width="22" style="vertical-align:-4px"> ${tr("rep_title")}</div>
+    <div class="vr-sub">${file?`${tr("rep_file")} <b style="color:#e6edf3">${esc(file)}</b>`:""}${p.date?` \u00B7 ${esc(p.date)}`:""} \u00B7 ${pill}</div>
+    <div class="vr-card"><div class="vr-h">${tr("summary_lbl")}</div>${kpis}${val}</div>
+    <div class="vr-card"><div class="vr-h">${tr("res_by_type")}</div>${bars||'<div style="color:#8b949e">\u2014</div>'}</div>
+    ${enrCard}
+    ${valueCard}
+    <div class="vr-card"><div class="vr-h">${tr("output_files")}</div>${files}<div class="vr-note">${tr("out_note")}</div></div>
+    <div class="vr-foot">${tr("gen_locally")}</div>
+    <div class="vractions">${actions}</div>
+  </div>`;
+}
+async function revalidate(fileEnc){
+  const file=decodeURIComponent(fileEnc||"");
+  try{await fetch("/api/reset",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({file})});}catch(e){}
+  if(file&&state.files.includes(file)){await selectFile(file,true);go(1);}else{go(0);}
+}
+
+async function init(){
+  const d=await api("/api/init");
+  lang=d.lang||"en"; state.services=d.services; state.files=d.files;
+  state.test_sample=d.test_sample; state.has_key=d.has_key; state.key_hint=d.key_hint; state.default_country=d.default_country;
+  state.session=d.session||{files:{}};
+  state.currency=d.currency||"CZK";
+  state.allowPip=(d.allow_pip_install!==false);
+  setupGlobalDrop();
+  renderLang(); renderSteps();
+  // resume an unfinished run - go straight to loading and continue
+  const lf=state.session.last_file;
+  if(d.resume && lf && state.files.includes(lf)){
+    await selectFile(lf,true);
+    if(d.resume.scope) state.scope=d.resume.scope;
+    if(d.resume.limit) state.limit=d.resume.limit;
+    state.step=3; renderSteps();
+    if(d.resume.has_key){ resumeRun(d.resume); return; }
+    render(); return;
+  }
+  // finished validation -> straight to the report + options (new file / re-validate)
+  if(d.last_report && lf && state.files.includes(lf)){
+    await selectFile(lf,true);
+    state.file=lf; state.step=3; renderSteps();
+    renderReport(d.last_report); return;
+  }
+  // otherwise restore the last file if one exists
+  if(lf && state.files.includes(lf)){
+    await selectFile(lf,true);
+    go(1);
+  }else{
+    go(0);
+  }
+}
+
+function renderLang(){
+  const ml=document.getElementById("manualLink"); if(ml){ml.textContent=tr("manual");
+    ml.href=(lang==="cs"?"https://foxentry.com/cs/manual":"https://foxentry.com/help-center")+"?utm_source=cleaner&utm_medium=app&utm_campaign=data_cleaner";}
+  const bl=document.getElementById("brandLink"); if(bl)bl.href=(lang==="cs"?"https://foxentry.com/cs/":"https://foxentry.com/")+"?utm_source=cleaner&utm_medium=app&utm_campaign=data_cleaner";
+  const gl=document.getElementById("logsLink"); if(gl)gl.textContent=tr("logs_link");
+  const cl=document.getElementById("countriesLink"); if(cl)cl.textContent=tr("countries_link");
+  const cmM=document.getElementById("countriesModal"); if(cmM&&cmM.classList.contains("open"))renderCountries();
+  const el=document.getElementById("lang"); el.innerHTML="";
+  ["en","cs"].forEach(l=>{const b=document.createElement("button");b.textContent=l.toUpperCase();
+    if(l===lang)b.className="active";b.onclick=()=>setLang(l);el.appendChild(b);});
+}
+function curCurrency(){return lang==='en'?'USD':'CZK';}
+async function syncCurrency(){
+  const want=curCurrency();
+  if(state.currency===want)return;
+  state.currency=want;
+  try{await fetch("/api/config",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({CURRENCY:want})});}catch(e){}
+}
+async function setLang(l){
+  if(l===lang)return;
+  lang=l;
+  await syncCurrency();
+  // The schema (service names, fields, examples, settings) is localized by the server -> fetch it in the new language.
+  try{const d=await api("/api/schema?lang="+encodeURIComponent(l));if(d&&d.ok&&d.services)state.services=d.services;}catch(e){}
+  applyT();renderSteps();render();
+}
+function renderSteps(){
+  const el=document.getElementById("steps"); el.innerHTML="";
+  STEP_KEYS.forEach((k,i)=>{
+    if(i)el.insertAdjacentHTML("beforeend",`<span class="ln"></span>`);
+    const d=document.createElement("div");
+    d.className="step"+(i===state.step?" active":"")+(i<state.step?" done":"");
+    d.innerHTML=`<span class="n">${i<state.step?"\u2713":i+1}</span><span>${tr(k)}</span>`;
+    if(i<state.step)d.style.cursor="pointer",d.onclick=()=>go(i);
+    el.appendChild(d);});
+}
+function applyT(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll("[data-t]").forEach(e=>{const k=e.getAttribute("data-t");if((T[lang]||T.en)[k])e.textContent=(T[lang]||T.en)[k];});
+  document.getElementById("cfgTitle").textContent=tr("settings");
+  renderLang();
+}
+function go(step){state.step=step;renderSteps();render();}
+function render(){
+  const m=document.getElementById("main");
+  document.body.classList.toggle("step-cols",state.step===1);
+  if(state.step===0)return renderFile(m);
+  if(state.step===1)return renderMap(m);
+  if(state.step===2)return renderSet(m);
+  if(state.step===3)return renderSummary(m);
+}
+
+async function saveSession(){
+  try{await fetch("/api/session",{method:"POST",headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({file:state.file,hasHeader:state.hasHeaderRow,mapping:state.mapping,
+      settings:state.settings,scope:state.scope,limit:state.limit})});}catch(e){}
+}
+
+/* ---------- step 0: file ---------- */
+function renderFile(m){
+  m.innerHTML="";
+  const wrap=document.createElement("div");wrap.className="filewrap";m.appendChild(wrap);
+  wrap.innerHTML=`<div style="text-align:center"><h1>${tr("title_file")}</h1><p class="lead">${tr("lead_file")}</p></div>`;
+  // large dropzone - the main element
+  const drop=document.createElement("div");
+  drop.className="dropbig";drop.id="drop";
+  drop.innerHTML=`${UP_ICON}<div class="dropbig__title">${tr("drop_title")}</div>`
+    +`<div class="dropbig__hint">${tr("drop_hint")}</div>`
+    +`<input id="fileinput" type="file" accept=".csv,.tsv,.txt,.xlsx,.xlsm" style="display:none">`;
+  wrap.appendChild(drop);
+  // notice about openpyxl being required for the selected .xlsx
+  if(state.xlsxNeeded){
+    const box=document.createElement("div");box.className="xlsxbox";box.id="xlsxbox";
+    box.innerHTML=`<div class="t">${tr("xlsx_need")}</div>`
+      +(state.allowPip
+         ?`<button class="btn" style="padding:.5rem .9rem" onclick="installXlsx()">${tr("xlsx_install")}</button>`
+         :"");
+    wrap.appendChild(box);
+  }
+  // history of files in the input folder
+  if(state.files.length){
+    const card=document.createElement("div");card.className="card";card.style.marginTop="1rem";
+    const lf=state.session.last_file;
+    let html=`<div class="histhead">${tr("pick")}</div>`;
+    state.files.forEach(f=>{
+      const isLast=f===lf?`<span class="last">${tr("last_used")}</span>`:"";
+      html+=`<div class="fileitem ${state.file===f?'sel':''}" onclick="selectFile('${f.replace(/'/g,"\\'")}')">`
+        +`${FILE_ICON}<span class="fname">${esc(f)}</span>${isLast}<span class="chev">\u203A</span></div>`;});
+    card.innerHTML=html;wrap.appendChild(card);
+  }
+  const fa=document.createElement("div");fa.className="footer-actions";fa.style.justifyContent="center";
+  fa.innerHTML=`<button class="btn" ${state.file?"":"disabled"} onclick="go(1)">${tr("next")}</button>`;
+  wrap.appendChild(fa);
+
+  const inp=document.getElementById("fileinput");
+  drop.onclick=()=>inp.click();
+  inp.onchange=()=>inp.files[0]&&uploadFile(inp.files[0]);
+  drop.ondragover=e=>{e.preventDefault();drop.classList.add("over");};
+  drop.ondragleave=()=>drop.classList.remove("over");
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove("over");if(e.dataTransfer.files[0])uploadFile(e.dataTransfer.files[0]);};
+}
+async function uploadFile(f){
+  const drop=document.getElementById("drop");
+  if(drop){drop.classList.add("is-uploading");
+    drop.innerHTML=`<div class="spinner"></div><div class="dropbig__title">${tr("uploading")}</div>`
+      +`<div class="dropbig__hint">${esc(f.name)}</div>`;}
+  try{
+    const r=await fetch("/api/upload?name="+encodeURIComponent(f.name),{method:"POST",body:f});
+    const j=await r.json().catch(()=>({}));
+    if(j&&j.ok===false){toast(j.error||"upload failed");render();return;}
+    const d=await api("/api/init");state.files=d.files;await selectFile(f.name);
+  }catch(e){toast("upload failed");render();}
+}
+async function installXlsx(){
+  const box=document.getElementById("xlsxbox");
+  if(box)box.innerHTML=`<div class="spinner" style="width:22px;height:22px;margin:0"></div><div class="t">${tr("xlsx_installing")}</div>`;
+  try{
+    const r=await api("/api/install-xlsx",{method:"POST"});
+    if(r&&r.ok){toast(tr("xlsx_done"));const f=state.xlsxNeeded;state.xlsxNeeded=null;if(f){await selectFile(f);}else{render();}}
+    else{toast(tr("xlsx_fail"));render();}
+  }catch(e){toast(tr("xlsx_fail"));render();}
+}
+function setupGlobalDrop(){
+  if(window._dropWired)return;
+  window._dropWired=true;
+  let depth=0;
+  const isFile=e=>e.dataTransfer&&Array.from(e.dataTransfer.types||[]).indexOf("Files")>=0;
+  const show=()=>{const d=document.getElementById("drop");if(d)d.classList.add("over");};
+  const hide=()=>{depth=0;const d=document.getElementById("drop");if(d)d.classList.remove("over");};
+  window.addEventListener("dragenter",e=>{if(state.step!==0||!isFile(e))return;e.preventDefault();depth++;show();});
+  window.addEventListener("dragover",e=>{if(state.step===0&&isFile(e))e.preventDefault();});
+  window.addEventListener("dragleave",e=>{if(state.step!==0)return;depth--;if(depth<=0)hide();});
+  window.addEventListener("drop",e=>{if(state.step!==0)return;e.preventDefault();hide();const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)uploadFile(f);});
+}
+async function selectFile(f,restore){
+  state.file=f;
+  const saved=(state.session.files||{})[f];
+  const hh=(restore&&saved)?saved.hasHeader:undefined;
+  const body={file:f}; if(hh!==undefined)body.hasHeader=hh;
+  const d=await api("/api/preview",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!d.ok){
+    if(d.error_code==="xlsx_missing"){state.xlsxNeeded=f;state.file=null;render();return;}
+    toast(d.error||"error");return;
+  }
+  state.xlsxNeeded=null;
+  state.header=d.header;state.rows=d.rows;state.total=d.total;state.encoding=d.encoding;state.hasHeaderRow=d.hasHeaderRow;
+  state.suggested_settings=d.suggested_settings||{};
+  if(restore&&saved&&saved.mapping&&saved.mapping.length){
+    state.mapping=saved.mapping; state.settings=saved.settings||{}; state.scope=saved.scope||"manual"; state.limit=saved.limit||null;
+    toast(tr("restored"));
+  }else{
+    state.mapping=d.suggestion; state.settings={};
+  }
+  await saveSession();
+  render();
+}
+
+/* ---------- step 1: columns ---------- */
+function svcById(id){return state.services.find(s=>s.service===id);}
+function fieldLabel(mp){const s=svcById(mp.service);if(!s)return '';const f=s.fields.find(f=>f.field===mp.field);return f?f.label:'';}
+function colorMap(){const m={};let n=0;state.mapping.forEach(mp=>{if(mp.service&&mp.field){const k=mp.service+'|'+(mp.group||1);if(!(k in m))m[k]=PALETTE[n++%PALETTE.length];}});return m;}
+function maxGroup(service){let mx=1;state.mapping.forEach(mp=>{if(mp.service===service)mx=Math.max(mx,mp.group||1);});return mx;}
+
+function renderMap(m){
+  // keep the table's horizontal scroll across re-render (selecting/removing a column)
+  const _keepScroll=(_sheetWrap&&_sheetWrap.scrollLeft)||0;
+  m.innerHTML=`<h1>${tr("title_map")}</h1><p class="lead">${tr("lead_map")}</p>`;
+  const filter=document.createElement("div");filter.className="filter";
+  filter.innerHTML=`<div class="filter__left">
+      <div class="filter__mark"><strong>${esc(state.file||"")}</strong></div>
+      <div class="filter__sum">${tr("total_rows")} <mark>${state.total} ${tr("rows")}</mark></div>
+    </div>`;
+  m.appendChild(filter);
+
+  const cmap=colorMap();
+  const noHdr=state.hasHeaderRow===false;
+  // Without a header, the first physical row is normal DATA (not a name). It shows at the top
+  // in data style (not bold) and the rest of the rows shift down; with a header, the bold name is on top.
+  const dataRows=noHdr?state.rows.slice(1):state.rows;
+  const nrows=Math.min(dataRows.length,8);
+  const letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const box=document.createElement("div");box.className="sheetbox";
+  const wrap=document.createElement("div");wrap.className="sheetwrap";
+  const sheet=document.createElement("div");sheet.className="sheet";
+
+  // left gutter: fox + first-row toggle + row numbers
+  let g=`<div class="gut"><div class="chiprow"><img src="${FOX}" alt="" onerror="this.style.display='none'"><span>${tr("pair_with")}</span></div>`;
+  g+=`<div class="letter"></div>`;
+  g+=`<div class="rowh cellhdr"><label class="firstrow"><input type="checkbox" ${state.hasHeaderRow!==false?'checked':''} onchange="toggleHeader(this.checked)"> ${tr("first_row_header")}</label></div>`;
+  for(let r=0;r<nrows;r++)g+=`<div class="rowh">${String(r+2).padStart(2,'0')}</div>`;
+  g+=`<div class="grouprow"></div></div>`;
+  sheet.innerHTML=g;
+
+  // one card per column
+  state.mapping.forEach((mp,i)=>{
+    const mapped=mp.service&&mp.field;
+    const color=mapped?cmap[mp.service+'|'+(mp.group||1)]:'';
+    const col=document.createElement("div");
+    col.className="col"+(mapped?" mapped":"");
+    if(color)col.style.setProperty("--c",color);
+    let h="";
+    if(mapped){
+      h+=`<div class="chiprow"><div class="chip" style="--c:${color}" onclick="openPicker(event,${i})"><img class="foxdot" src="${FOX}" alt="" onerror="this.style.display='none'"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(fieldLabel(mp))}</span><button class="x" title="${tr('none')}" onclick="event.stopPropagation();clearCol(${i})">\u2715</button></div></div>`;
+    }else{
+      h+=`<div class="chiprow"><div class="chip empty" onclick="openPicker(event,${i})">${tr("choose_service")}</div></div>`;
+    }
+    h+=`<div class="letter">${letters[i]||(i+1)}</div>`;
+    const _ci=state.header.indexOf(mp.column);
+    if(noHdr){
+      const v0=state.rows[0]?state.rows[0][_ci]:'';
+      h+=`<div class="rowh celldata${v0?'':' empty'}" title="${esc(v0||'')}">${v0?esc(v0):tr("empty_cell")}</div>`;
+    }else{
+      h+=`<div class="rowh cellhdr" title="${esc(mp.column)}">${esc(mp.column)}</div>`;
+    }
+    for(let r=0;r<nrows;r++){
+      const v=dataRows[r]?dataRows[r][_ci]:'';
+      h+=`<div class="rowh celldata${v?'':' empty'}">${v?esc(v):tr("empty_cell")}</div>`;
+    }
+    if(mapped&&svcById(mp.service).grouped){
+      const mx=maxGroup(mp.service)+1, sname=svcById(mp.service).name;
+      h+=`<div class="grouprow"><select class="gsel" style="--c:${color}" onchange="setGroup(${i},this.value)">`;
+      for(let gg=1;gg<=mx;gg++)h+=`<option value="${gg}" ${(mp.group||1)==gg?'selected':''}>${esc(sname)} ${gg}</option>`;
+      h+=`</select></div>`;
+    }else{h+=`<div class="grouprow"></div>`;}
+    col.innerHTML=h;sheet.appendChild(col);
+  });
+
+  wrap.appendChild(sheet);
+  const panel=document.createElement("div");panel.className="sheetpanel";panel.appendChild(wrap);
+  box.innerHTML=`<button class="sheetarrow sheetarrow--l" onclick="slideSheet(-1)">\u2190</button><button class="sheetarrow sheetarrow--r" onclick="slideSheet(1)">\u2192</button>`;
+  box.insertBefore(panel,box.firstChild);
+  m.appendChild(box);
+
+  const fa=document.createElement("div");fa.className="footer-actions";
+  fa.innerHTML=`<button class="btn--ghost" onclick="go(0)">${tr("back")}</button><button class="btn" onclick="toSettings()">${tr("next")}</button>`;
+  m.appendChild(fa);
+
+  enableDragScroll(wrap);
+  if(_keepScroll){wrap.scrollLeft=_keepScroll;updateArrows();}
+}
+let _sheetWrap=null;
+function enableDragScroll(wrap){
+  _sheetWrap=wrap;
+  let down=false,sx=0,sl=0,moved=false;
+  wrap.addEventListener("mousedown",e=>{if(e.target.closest("select,button,.chip,input,label,option"))return;down=true;moved=false;sx=e.pageX;sl=wrap.scrollLeft;wrap.classList.add("drag");});
+  window.addEventListener("mouseup",()=>{down=false;wrap.classList.remove("drag");});
+  window.addEventListener("mousemove",e=>{if(!down)return;const d=e.pageX-sx;if(Math.abs(d)>3)moved=true;wrap.scrollLeft=sl-d;updateArrows();});
+  // suppress the click after dragging
+  wrap.addEventListener("click",e=>{if(moved){e.preventDefault();e.stopPropagation();moved=false;}},true);
+  wrap.addEventListener("scroll",updateArrows);
+  requestAnimationFrame(updateArrows);
+}
+function slideSheet(dir){if(!_sheetWrap)return;_sheetWrap.scrollBy({left:dir*440,behavior:"smooth"});setTimeout(updateArrows,350);}
+function updateArrows(){
+  const w=_sheetWrap;if(!w)return;
+  const l=document.querySelector(".sheetarrow--l"),r=document.querySelector(".sheetarrow--r");
+  if(!l||!r)return;
+  const max=w.scrollWidth-w.clientWidth-2;
+  l.disabled=w.scrollLeft<=2; r.disabled=w.scrollLeft>=max;
+  const hide=max<=2; l.style.display=hide?"none":""; r.style.display=hide?"none":"";
+}
+function clearCol(i){const mp=state.mapping[i];mp.service=null;mp.field=null;mp.group=1;mp.reasoning="";closePicker();renderMap(document.getElementById("main"));}
+function setGroup(i,v){state.mapping[i].group=parseInt(v,10);renderMap(document.getElementById("main"));}
+function toggleHeader(checked){state.hasHeaderRow=checked;reloadPreview();}
+async function reloadPreview(){
+  const prev=state.mapping;
+  const d=await api("/api/preview",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({file:state.file,hasHeader:state.hasHeaderRow})});
+  if(!d.ok){toast(d.error||"error");return;}
+  state.header=d.header;state.rows=d.rows;state.total=d.total;
+  // Toggling "first row is a header" changes neither the count nor the order of columns, only what gets validated.
+  // Keep the user's mapping by column position; only refresh the column label from the new header.
+  if(prev&&prev.length===d.suggestion.length){
+    state.mapping=d.suggestion.map((sug,i)=>{const o=prev[i];return {...sug,service:o.service,field:o.field,group:o.group,reasoning:o.reasoning};});
+  }else{
+    state.mapping=d.suggestion;
+  }
+  renderMap(document.getElementById("main"));
+}
+let _picker=null;
+function closePicker(){if(_picker){_picker.remove();_picker=null;document.removeEventListener("click",_pickerOutside,true);}}
+function _pickerOutside(e){if(_picker&&!_picker.contains(e.target))closePicker();}
+function openPicker(e,i){
+  e.stopPropagation();closePicker();
+  const mp=state.mapping[i];
+  const p=document.createElement("div");p.className="picker";
+  let h=`<div class="opt" onclick="pick(${i},'','')">${tr("none")}</div>`;
+  // candidates present in the schema -> used only to REORDER (no special section):
+  // the most relevant service section comes first, and within it the suggested
+  // field(s) bubble to the top by score; everything else keeps its original order.
+  const cand=(mp.candidates||[]).filter(c=>{const s=svcById(c.service);return s&&s.fields.some(f=>f.field===c.field);});
+  const svcScore={}, fieldScore={};
+  cand.forEach(c=>{
+    const fk=c.service+'|'+c.field, sc=c.score||0;
+    if(fieldScore[fk]===undefined||sc>fieldScore[fk])fieldScore[fk]=sc;
+    if(svcScore[c.service]===undefined||sc>svcScore[c.service])svcScore[c.service]=sc;
+  });
+  const services=state.services.map((s,idx)=>({s,idx})).sort((a,b)=>{
+    const sa=(a.s.service in svcScore)?svcScore[a.s.service]:-Infinity;
+    const sb=(b.s.service in svcScore)?svcScore[b.s.service]:-Infinity;
+    return sb!==sa ? sb-sa : a.idx-b.idx;
+  }).map(o=>o.s);
+  services.forEach(s=>{
+    h+=`<div><span class="grp">${esc(s.name)}</span></div>`;
+    const fields=s.fields.map((f,idx)=>({f,idx})).sort((a,b)=>{
+      const fa=fieldScore[s.service+'|'+a.f.field], fb=fieldScore[s.service+'|'+b.f.field];
+      const ha=fa!==undefined, hb=fb!==undefined;
+      if(ha!==hb)return ha?-1:1;
+      if(ha&&fa!==fb)return fb-fa;
+      return a.idx-b.idx;
+    }).map(o=>o.f);
+    fields.forEach(f=>{const sel=(mp.service===s.service&&mp.field===f.field);
+      const ex=f.example?`<span class="opt-ex">${tr("ex_label")}: ${esc(f.example)}</span>`:'';
+      const ds=f.desc?`<span class="opt-desc">${esc(f.desc)}</span>`:'';
+      h+=`<div class="opt" style="${sel?'background:var(--blue-l);font-weight:700':''}" onclick="pick(${i},'${s.service}','${f.field}')"><span>${esc(f.label)}</span>${ex}${ds}</div>`;});
+  });
+  p.innerHTML=h;document.body.appendChild(p);
+  const r=e.currentTarget.getBoundingClientRect();
+  p.style.left=Math.max(8,Math.min(r.left,window.innerWidth-240))+"px";
+  p.style.top=(r.bottom+window.scrollY+5)+"px";
+  _picker=p;setTimeout(()=>document.addEventListener("click",_pickerOutside,true),0);
+}
+function pick(i,svc,field){const mp=state.mapping[i];mp.service=svc||null;mp.field=field||null;if(svc)mp.group=mp.group||1;mp.reasoning="";closePicker();renderMap(document.getElementById("main"));}
+
+function toSettings(){
+  const mapped=state.mapping.filter(m=>m.service&&m.field);
+  if(!mapped.length){toast(tr("no_map"));return;}
+  const used=[...new Set(mapped.map(m=>m.service))];
+  used.forEach(sv=>{if(!state.settings[sv]){state.settings[sv]={};
+    (svcById(sv).settings||[]).forEach(st=>state.settings[sv][st.id]=Array.isArray(st.default)?st.default.slice():st.default);
+    const sug=(state.suggested_settings||{})[sv]; if(sug)Object.keys(sug).forEach(k=>state.settings[sv][k]=Array.isArray(sug[k])?sug[k].slice():sug[k]);}});
+  saveSession();
+  go(2);
+}
+
+/* ---------- step 2: settings ---------- */
+var SEC_ICON={
+  location:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.6 7-12a7 7 0 1 0-14 0c0 5.4 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>',
+  company:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M8 7h2M8 11h2M8 15h2M14 7h2M14 11h2M14 15h2"/></svg>',
+  email:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>',
+  phone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h3.5l1.8 4.5-2.2 1.3a12 12 0 0 0 5.1 5.1l1.3-2.2L19 15.5V19a2 2 0 0 1-2 2A15 15 0 0 1 3 5a2 2 0 0 1 2-2z"/></svg>',
+  name:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.6-3.8 4-6 7.5-6s6.9 2.2 7.5 6"/></svg>'
+};
+function renderSet(m){
+  m.innerHTML=`<h1>${tr("title_set")}</h1><p class="lead">${tr("lead_set")}</p>`;
+  const used=[...new Set(state.mapping.filter(m=>m.service&&m.field).map(m=>m.service))];
+  const wrap=document.createElement("div");let h="";
+  used.forEach(sv=>{const s=svcById(sv);
+    const tail=s.warn
+      ?`<span class="sec-warn"><strong>\u26A0</strong> ${esc(s.warn)}</span>`
+      :(s.countries?`<span class="sec-pill">${esc(s.countries)}</span>`:'');
+    h+=`<div class="sec"><div class="sec-head"><span class="sec-icon">${SEC_ICON[sv]||''}</span><span class="sec-title">${esc(s.name)}</span>${tail}</div>`;
+    h+=`<div class="sets">`;
+    (s.settings||[]).forEach(st=>{h+=renderSetting(sv,st);});
+    h+=`</div></div>`;
+  });
+  wrap.innerHTML=h;m.appendChild(wrap);
+  const fa=document.createElement("div");fa.className="footer-actions";
+  fa.innerHTML=`<button class="btn--ghost" onclick="go(1)">${tr("back")}</button><button class="btn" onclick="saveSession();go(3)">${tr("next")}</button>`;
+  m.appendChild(fa);
+}
+function renderSetting(sv,st){
+  const cur=state.settings[sv][st.id];
+  const hint=st.desc?`<div class="set-hint">${esc(st.desc)}</div>`:'';
+  const lbl=`<div class="set-l"><div class="set-name">${esc(st.label)}</div>${hint}</div>`;
+  if(st.type==='select'){
+    const opts=(st.options||[]).map(o=>`<option value="${esc(o.value)}" ${o.value===cur?'selected':''}>${esc(o.label)}</option>`).join('');
+    return `<div class="set">${lbl}<div class="set-c"><select class="set-select" onchange="setSetting('${sv}','${st.id}',this.value)">${opts}</select></div></div>`;
+  }
+  if(st.type==='order'){
+    return `<div class="set set--block">${lbl}<div class="orderlist" id="ord-${sv}-${st.id}">${renderOrder(sv,st)}</div></div>`;
+  }
+  const on=cur?'checked':'';
+  return `<div class="set">${lbl}<div class="set-c"><span class="switch"><input type="checkbox" ${on} onchange="setSetting('${sv}','${st.id}',this.checked)"><span class="h"></span></span></div></div>`;
+}
+function _ordLabel(st,v){const o=(st.options||[]).find(o=>o.value===v);return o?o.label:v;}
+function renderOrder(sv,st){
+  const arr=state.settings[sv][st.id]||st.default||[];
+  return arr.map((v,idx)=>`<div class="ord-item"><span class="ord-rank">${idx+1}</span><span class="ord-name">${esc(_ordLabel(st,v))}</span><span class="ord-btns"><button ${idx===0?'disabled':''} onclick="moveOrder('${sv}','${st.id}',${idx},-1)" title="nahoru">\u25B2</button><button ${idx===arr.length-1?'disabled':''} onclick="moveOrder('${sv}','${st.id}',${idx},1)" title="dolů">\u25BC</button></span></div>`).join('');
+}
+function setSetting(sv,id,val){state.settings[sv][id]=val;saveSession();}
+function moveOrder(sv,id,idx,dir){
+  const arr=(state.settings[sv][id]||[]).slice();const j=idx+dir;
+  if(j<0||j>=arr.length)return;
+  const t=arr[idx];arr[idx]=arr[j];arr[j]=t;state.settings[sv][id]=arr;saveSession();
+  const el=document.getElementById('ord-'+sv+'-'+id);
+  if(el){const st=(svcById(sv).settings||[]).find(s=>s.id===id);el.innerHTML=renderOrder(sv,st);}
+}
+
+/* ---------- step 3: summary & order ---------- */
+function mappedPayload(){return state.mapping.filter(m=>m.service&&m.field);}
+function fmtMoney(n,sym){return (Number(n)||0).toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/\u00A0/g,' ')+' '+(sym||'Kč');}
+function renderSummary(m){
+  m.innerHTML=`<h1>${tr("title_sum")}</h1><p class="lead">${tr("lead_sum")}</p>`;
+  const g=document.createElement("div");g.className="grid2";
+  // left: scope + key + unit price
+  const left=document.createElement("div");left.className="card sumleft";
+  left.innerHTML=`
+    <div class="seclbl seclbl--active">1 \u00B7 ${tr("api_key")}<span class="infodot" tabindex="0" aria-label="${tr("key_help_aria")}">i<span class="tip">${tr("key_help")}</span></span></div>
+    <div class="field">
+      ${state.has_key?`
+      <div id="keysaved" style="display:flex;align-items:center;gap:.6rem">
+        <span style="flex:1;color:var(--ink)">${tr("api_key_saved")} <span class="keymask">\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2009${esc(state.key_hint||"")}</span></span>
+        <button class="btn--ghost" style="padding:.55rem .9rem" onclick="changeKey()">${tr("api_key_change")}</button>
+      </div>
+      <div id="keyedit" style="display:none;gap:.5rem;margin-top:.5rem">
+        <input id="sum_key" type="text" class="maskinput" placeholder="${tr('api_key_ph')}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="fx_token_${Date.now()}" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other" style="flex:1">
+        <button class="btn--ghost" style="padding:.55rem .9rem" onclick="saveKey()">${tr("api_key_save")}</button>
+      </div>`:`
+      <div style="display:flex;gap:.5rem">
+        <input id="sum_key" type="text" class="maskinput" placeholder="${tr('api_key_ph')}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="fx_token_${Date.now()}" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other" style="flex:1">
+        <button class="btn--ghost" style="padding:.55rem .9rem" onclick="saveKey()">${tr("api_key_save")}</button>
+      </div>`}
+    </div>
+    <div class="cardsep"></div>
+    <div class="step2${state.has_key?'':' locked'}" ${state.has_key?'':'aria-disabled="true"'}>
+    <div class="seclbl${state.has_key?' seclbl--active':''}">2 \u00B7 ${tr("scope_head")}</div>
+    <div class="scope">
+      <label class="${state.scope==='manual'?'sel':''}"><input type="radio" name="scope" ${state.scope==='manual'?'checked':''} onchange="setScope('manual')">${tr("scope_manual")} \u2014 <input id="scopeLimit" type="number" min="1" max="${state.total}" value="${Math.min(state.limit||state.test_sample,state.total)}" onclick="event.stopPropagation();setScope('manual')" onchange="setLimit(this.value)" style="width:90px;margin:0 .3rem;font:inherit"> ${tr("scope_rows_unit")}</label>
+      <label class="${state.scope==='full'?'sel':''}"><input type="radio" name="scope" ${state.scope==='full'?'checked':''} onchange="setScope('full')">${tr("scope_full")} \u2014 ${tr("scope_all",{n:state.total})}</label>
+    </div>
+    <div class="logbar">
+      <label><input type="checkbox" ${state.logRun?'checked':''} onchange="state.logRun=this.checked"> ${tr("log_run")}</label>
+      <span class="hint">${tr("log_run_hint")}</span>
+    </div>
+    </div>`;
+  g.appendChild(left);
+  // right: sum panel
+  const right=document.createElement("div");
+  right.innerHTML=`<div class="sum" id="sumpanel"><div class="sum__head">${tr("sum_head")}</div><div class="small muted">\u2026</div></div>`;
+  g.appendChild(right);
+  m.appendChild(g);
+
+
+  const fa=document.createElement("div");fa.className="footer-actions";
+  fa.innerHTML=`<button class="btn--ghost" onclick="go(2)">${tr("back")}</button><button class="btn btn--start" id="runbtn" onclick="startRun()"><span class="play">\u25B6</span>${tr("run_btn")}</button>`;
+  m.appendChild(fa);
+  loadEstimate();
+}
+async function changeKey(){
+  const ks=document.getElementById("keysaved"), ke=document.getElementById("keyedit");
+  if(ks)ks.style.display="none";
+  if(ke){ke.style.display="flex";const i=document.getElementById("sum_key");if(i)i.focus();}
+}
+async function saveKey(){
+  const v=document.getElementById("sum_key").value.trim();
+  if(!v)return;
+  await fetch("/api/config",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({FOXENTRY_API_KEY:v})});
+  state.has_key=true; state.key_hint=v.length>8?v.slice(-4):""; toast(tr("key_saved"));
+  render();  // re-render the summary into the "key saved" state
+}
+function sumRowsTxt(){
+  return state.scope==='full'
+    ? tr("scope_all",{n:state.total})
+    : tr("scope_first",{n:Math.min(state.limit||state.test_sample,state.total)});
+}
+function sumSkeleton(loading){
+  const box=document.getElementById("sumpanel");if(!box)return;
+  const note=loading
+    ? `<div class="small muted" style="margin-top:.9rem">${tr("sum_calc")}</div>`
+    : "";
+  box.innerHTML=`<div class="sum__head">${tr("sum_head")}</div>
+    <table class="sum-skel">
+      <tr><td>${tr("rows_label")}</td><td>${sumRowsTxt()}</td></tr>
+      <tr><td>${tr("calls")}</td><td class="ph">\u2014</td></tr>
+      <tr><td>${tr("credits_left")}</td><td class="ph">\u2014</td></tr>
+      <tr><td>${tr("rate")}</td><td class="ph">\u2014</td></tr>
+      <tr><td>${tr("eta")}</td><td class="ph">\u2014</td></tr>
+      <tr class="divider"><td colspan="2"><hr></td></tr>
+      <tr class="total"><td>${tr("price_total")}</td><td class="ph">\u2014</td></tr>
+    </table>${note}`;
+}
+async function loadEstimate(){
+  const box=document.getElementById("sumpanel");if(!box)return;
+  if(!state.has_key){sumSkeleton(false);updateRunBtn();return;}
+  await syncCurrency();
+  // Show the skeleton only the first time. On recompute (range change) leave the panel unchanged in
+  // height and just dim it slightly so the box does not jump.
+  if(!state.estimate){sumSkeleton(true);}else{box.style.opacity=".55";}
+  const d=await api("/api/estimate",{method:"POST",headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({file:state.file,mapping:mappedPayload(),settings:state.settings,scope:state.scope,limit:state.limit,hasHeader:state.hasHeaderRow})});
+  box.style.opacity="";
+  if(!d.ok){box.innerHTML=`<div class="sum__head">${tr("sum_head")}</div><div class="errbox">${esc(d.error||"error")}</div>`;state.canRun=false;updateRunBtn();return;}
+  state.estimate=d; state.canRun=true;
+  const sym=d.price_symbol||"Kč";
+  const complete=(d.remaining>0 && d.remaining>=d.total);
+  let resume="";
+  if(complete){
+    resume=`<div class="donebox"><span class="dot"></span>${tr("alldone")}</div>`;
+    state.canRun=false;
+  }else if(d.remaining>0){
+    resume=`<div class="okbox">${tr("resume",{n:d.remaining+1})}</div>`;
+  }
+  let conn="";
+  let warn=(d.connected!==false&&d.credits_left!=null&&d.calls>d.credits_left)?`<div class="warnbox">${tr("warn_credits")}</div>`:"";
+  let breakdown="";
+  (d.price_items||[]).forEach(it=>{
+    let detail;
+    if(it.enrich){
+      detail=`${tr("price_validation")}: ${it.calls} \u00D7 ${it.unit_base} ${sym}<br>+ ${tr("price_enrich")}: ${it.calls} \u00D7 ${it.unit_enrich} ${sym}`;
+    }else{
+      detail=`${it.calls} \u00D7 ${it.unit} ${sym}`;
+    }
+    breakdown+=`<tr><td><span style="color:var(--ink);font-weight:600">${esc(it.label)}</span><small>${detail}</small></td><td>${fmtMoney(it.subtotal,sym)}</td></tr>`;
+  });
+  const rateTxt=(d.rate??"\u2014")+(d.rate_estimated?" ~":"");
+  box.innerHTML=`<div class="sum__head">${tr("sum_head")}</div>${conn}${resume}
+    <table>
+      <tr><td>${tr("calls")}</td><td>${d.calls}${d.deduped>0?` <small style="color:var(--grey)">(${tr("dedup_from",{n:d.raw_calls})})</small>`:""}</td></tr>
+      <tr><td>${tr("credits_left")}</td><td>${d.credits_left??"\u2014"}</td></tr>
+      <tr><td>${tr("rate")}</td><td>${rateTxt}</td></tr>
+      <tr><td>${tr("eta")}<small>${state.scope==='full'?tr("scope_full"):tr("scope_first",{n:Math.min(state.limit||state.total,state.total)})}</small></td><td>${esc(d.eta)}</td></tr>
+      <tr class="divider"><td colspan="2"><hr></td></tr>
+      <tr><td colspan="2" class="small muted">${tr("price_breakdown")}</td></tr>
+      ${breakdown}
+      <tr class="divider"><td colspan="2"><hr></td></tr>
+      <tr class="total"><td>${tr("price_total")}</td><td>${fmtMoney(d.price||0,sym)}</td></tr>
+    </table>${warn}`;
+  updateRunBtn(complete);
+}
+async function setCurrency(v){
+  state.currency=v;
+  await fetch("/api/config",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({CURRENCY:v})});
+  loadEstimate();
+}
+function setScope(v){
+  state.scope=v;
+  if(v==="manual"&&!state.limit){
+    const inp=document.getElementById("scopeLimit");
+    state.limit=(inp&&parseInt(inp.value,10))||Math.min(state.test_sample,state.total)||1;
+  }
+  saveSession();
+  const labels=document.querySelectorAll(".scope label");
+  const map={manual:0,full:1};
+  labels.forEach((l,idx)=>l.classList.toggle("sel",idx===map[v]));
+  loadEstimate();
+}
+function setLimit(v){
+  let n=parseInt(v,10);
+  if(isNaN(n)||n<1)n=1;
+  if(state.total&&n>state.total)n=state.total;
+  state.limit=n;
+  const inp=document.getElementById("scopeLimit");if(inp&&String(n)!==inp.value)inp.value=n;
+  if(state.scope!=="manual"){setScope("manual");}else{saveSession();loadEstimate();}
+}
+function fmtDur(s){s=Math.round(s||0);if(s<60)return s+" s";const m=Math.floor(s/60),r=s%60;return m+" min"+(r?(" "+r+" s"):"");}
+function colorForResult(label){const n=(label||"").toLowerCase();
+  if(/error|chyb/.test(n))return"#f85149";
+  if(/inval|neplat/.test(n))return"#f0883e";
+  if(/correct|oprav|n\u00e1vrh|navrh|suggest/.test(n))return"#58a6ff";
+  if(/valid|platn/.test(n))return"#3fb950";
+  return"#8588a1";}
+function updateRunBtn(complete){
+  const b=document.getElementById("runbtn");if(!b)return;
+  if(complete){
+    b.innerHTML=tr("revalidate");
+    b.onclick=()=>revalidate(encodeURIComponent(state.file||""));
+    b.classList.remove("btn--start");
+    b.disabled=false;
+  }else{
+    b.innerHTML=`<span class="play">\u25B6</span>${tr("run_btn")}`;
+    b.onclick=startRun;
+    b.classList.add("btn--start");
+    b.disabled=!state.has_key;
+  }
+}
+async function startRun(){
+  if(!state.has_key){toast(tr("api_key_missing"));return;}
+  document.getElementById("runbtn").disabled=true;
+  await saveSession();
+  const d=await api("/api/run",{method:"POST",headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({file:state.file,mapping:mappedPayload(),settings:state.settings,scope:state.scope,limit:state.limit,hasHeader:state.hasHeaderRow,log:state.logRun})});
+  if(!d.ok){toast(d.error||"error");document.getElementById("runbtn").disabled=false;return;}
+  pollRun();
+}
+function pollRun(){
+  const m=document.getElementById("main");
+  m.innerHTML=`<h1>${tr("title_sum")}</h1>`;
+  const c=document.createElement("div");c.className="card";c.id="runcard";m.appendChild(c);
+  const t0=Date.now();
+  let startDone=null;
+  const tick=async()=>{
+    const p=await api("/api/progress");
+    const pct=p.total?Math.round(100*p.done/p.total):0;
+    if(!p.finished){
+      const now=Date.now();
+      const elapsed=(now-t0)/1000;
+      const done=p.done||0;
+      if(startDone===null)startDone=done;
+      const processed=done-startDone;
+      const remaining=Math.max(0,(p.total||0)-done);
+      // Stable estimate: average rate over the whole (current) session (not a sliding window),
+      // rounded to whole minutes. For the first few seconds we show "…" (no rate yet).
+      let etaTxt="\u2026";
+      if(remaining===0){
+        etaTxt="~1 min";
+      }else if(elapsed>=5 && processed>=8){
+        const rate=processed/elapsed;                 // rows/s, cumulative = steady
+        const mins=Math.max(1,Math.round((remaining/rate)/60));
+        etaTxt="~"+mins+" min";
+      }
+      const cur=Math.min(p.current||((p.done||0)+1),p.total||(p.done||0)+1);
+      const banner=(p.resume_from>0)?`<div class="okbox">${tr("prog_resumed",{n:(p.resume_from)+1})}</div>`:"";
+      document.getElementById("runcard").innerHTML=`<div style="font-weight:600">${tr("running")}</div>
+        <div class="progress"><div style="width:${Math.max(pct,2)}%"></div></div>
+        ${banner}
+        <div class="runstats muted">
+          <span><b>${p.done||0}</b> / ${p.total||0} ${tr("rows")} (${pct}%)</span>
+          <span>${tr("prog_current")} <b>${cur}</b></span>
+          <span>${tr("prog_validations")}: <b>${p.live_calls||p.calls||0}</b></span>
+          <span>${tr("lbl_run_time")}: <b>${fmtDur(elapsed)}</b></span>
+          <span>${tr("prog_eta")}: <b>${etaTxt}</b></span>
+        </div>
+        <div class="infobox">${tr("resume_note")}</div>`;
+      setTimeout(tick,450);
+    }else{
+      if(!p.ok){document.getElementById("runcard").innerHTML=`<div class="errbox">${esc(p.message||"error")}</div>`;return;}
+      renderReport(p);
+    }
+  };tick();
+}
+
+/* ---------- advanced config modal ---------- */
+async function openConfig(){
+  const c=await api("/api/config");state.config=c;
+  document.getElementById("c_lang").value=c.LANGUAGE||"en";
+  document.getElementById("c_country").value=c.DEFAULT_COUNTRY||"CZ";
+  document.getElementById("c_sample").value=c.TEST_SAMPLE||"5";
+  document.getElementById("c_timeout").value=c.TIMEOUT||"30";
+  document.getElementById("c_inenc").value=c.INPUT_ENCODING||"auto";
+  document.getElementById("c_outenc").value=c.OUTPUT_ENCODING||"utf-8-sig";
+  document.getElementById("c_csv").checked=(c.CSV_INJECTION_GUARD||"off")==="on";
+  // API key: leave the input empty (we do not prefill secrets), just show a hint of the saved one
+  const ak=document.getElementById("c_apikey"); ak.value="";
+  ak.placeholder=tr("c_apikey_ph");
+  const hint=document.getElementById("c_apikey_hint");
+  if(state.has_key){hint.innerHTML=`${tr("api_key_saved")} <span class="keymask">\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2009${esc(state.key_hint||"")}</span> — ${tr("c_apikey_replace")}`;}
+  else{hint.textContent=tr("c_apikey_none");}
+  applyT();
+  document.getElementById("cfgModal").classList.add("open");
+}
+function closeConfig(){document.getElementById("cfgModal").classList.remove("open");}
+const CM_NAMES={
+ AD:["Andorra","Andorra"],AL:["Albania","Albánie"],AT:["Austria","Rakousko"],BA:["Bosnia & Herzegovina","Bosna a Hercegovina"],
+ BE:["Belgium","Belgie"],BG:["Bulgaria","Bulharsko"],CH:["Switzerland","Švýcarsko"],CY:["Cyprus","Kypr"],
+ CZ:["Czechia","Česko"],DE:["Germany","Německo"],DK:["Denmark","Dánsko"],ES:["Spain","Španělsko"],
+ FR:["France","Francie"],GB:["United Kingdom","Spojené království"],GR:["Greece","Řecko"],HR:["Croatia","Chorvatsko"],
+ HU:["Hungary","Maďarsko"],IS:["Iceland","Island"],IT:["Italy","Itálie"],LI:["Liechtenstein","Lichtenštejnsko"],
+ LU:["Luxembourg","Lucembursko"],MC:["Monaco","Monako"],ME:["Montenegro","Černá Hora"],MK:["North Macedonia","Severní Makedonie"],
+ MT:["Malta","Malta"],NL:["Netherlands","Nizozemsko"],PL:["Poland","Polsko"],RO:["Romania","Rumunsko"],
+ RS:["Serbia","Srbsko"],SI:["Slovenia","Slovinsko"],SK:["Slovakia","Slovensko"],SM:["San Marino","San Marino"],
+ VA:["Vatican City","Vatikán"],XK:["Kosovo","Kosovo"]};
+const CM_LOC=["AD","AL","AT","BA","BE","BG","CH","CY","CZ","DE","DK","ES","FR","GB","GR","HR","HU","IS","IT","LI","LU","MC","ME","MK","MT","NL","PL","RO","RS","SI","SK","SM","VA","XK"];
+const CM_ROWS=[
+ {svc:"email",icon:"📧",ep:"/email/validate",ww:true},
+ {svc:"phone",icon:"📞",ep:"/phone/validate",ww:true},
+ {svc:"name",icon:"👤",ep:"/name/validate",codes:["CZ","SK"]},
+ {svc:"location",icon:"📍",ep:"/location/validate",codes:CM_LOC},
+ {svc:"company",icon:"🏢",ep:"/company/validate",codes:["CZ","SK","PL","HU"]}];
+function cmFlag(cc){ return /^[A-Za-z]{2}$/.test(cc)?String.fromCodePoint(...[...cc.toUpperCase()].map(c=>0x1F1E6+c.charCodeAt(0)-65)):""; }
+function cmName(cc){ const n=CM_NAMES[cc]; return n?(lang==="cs"?n[1]:n[0]):cc; }
+function renderCountries(){
+  const rows=CM_ROWS.map(r=>{
+    const cov = r.ww
+      ? `<span class="ww">🌍 ${esc(tr("cm_worldwide"))}</span>`
+      : `<div class="cflags">`+r.codes.map(c=>`<span class="cchip"><span class="fl">${cmFlag(c)}</span> ${esc(cmName(c))} <span class="cc">${esc(c)}</span></span>`).join("")+`</div>`;
+    const epTxt = r.ep + (r.codes?` · ${r.codes.length} ${tr("cm_countries")}`:"");
+    return `<div class="cmrow"><div class="cmrow__h">${r.icon} ${esc(tr("cm_svc_"+r.svc))}<span class="ep">${esc(epTxt)}</span></div>${cov}</div>`;
+  }).join("");
+  document.getElementById("countriesBox").innerHTML=
+    `<div class="cm-head"><h2>${esc(tr("cm_title"))}</h2><button class="cm-x" onclick="closeCountries()" aria-label="close">✕</button></div>`+
+    `<div class="cm-intro">${esc(tr("cm_intro"))}</div>`+rows+
+    `<div class="cm-foot">${esc(tr("cm_source"))} · <a href="https://foxentry.dev/v2.1/reference/supported-countries" target="_blank" rel="noopener">foxentry.dev</a></div>`;
+}
+function openCountries(){ renderCountries(); document.getElementById("countriesModal").classList.add("open"); }
+function closeCountries(){ document.getElementById("countriesModal").classList.remove("open"); }
+async function saveConfig(){
+  const v={LANGUAGE:document.getElementById("c_lang").value,DEFAULT_COUNTRY:document.getElementById("c_country").value,
+    TEST_SAMPLE:document.getElementById("c_sample").value,TIMEOUT:document.getElementById("c_timeout").value,
+    INPUT_ENCODING:document.getElementById("c_inenc").value,OUTPUT_ENCODING:document.getElementById("c_outenc").value,
+    CSV_INJECTION_GUARD:document.getElementById("c_csv").checked?"on":"off"};
+  const ak=document.getElementById("c_apikey").value.trim();
+  if(ak){v.FOXENTRY_API_KEY=ak;}   // only when the user entered a new one - otherwise the key is not overwritten
+  await fetch("/api/config",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(v)});
+  closeConfig();toast(tr("saved"));
+  const d=await api("/api/init");lang=d.lang;state.services=d.services;state.files=d.files;
+  state.test_sample=d.test_sample;state.has_key=d.has_key;state.key_hint=d.key_hint;applyT();renderSteps();render();
+}
+
+function esc(x){return String(x==null?"":x).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+let toastTimer;
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),2200);}
+
+init();
+</script>
+</body>
+</html>

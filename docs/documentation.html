@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foxentry Data Cleaner · Documentation</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20version%3D%221.1%22%20id%3D%22Vrstva_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20236.3%20236.2%22%20style%3D%22enable-background%3Anew%200%200%20236.3%20236.2%3B%22%20xml%3Aspace%3D%22preserve%22%3E%20%3Cstyle%20type%3D%22text%2Fcss%22%3E%20.st0%7Bfill%3A%23E74600%3B%7D%20.st1%7Bfill%3A%23CC3000%3B%7D%20.st2%7Bfill%3A%23FF6102%3B%7D%20%3C%2Fstyle%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_3_2_%22%3E%20%3Cg%20id%3D%22XMLID_42_%22%3E%20%3Cpath%20id%3D%22XMLID_3_%22%20class%3D%22st0%22%20d%3D%22M115.3%2C120.8c7.7%2C18.5%2C33.8%2C54.7%2C38.9%2C61c3.6%2C4.5%2C79.2%2C53.4%2C82.1%2C54.5V0%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_2_2_%22%3E%20%3Cg%20id%3D%22XMLID_49_%22%3E%20%3Cpolygon%20id%3D%22XMLID_59_%22%20class%3D%22st1%22%20points%3D%22115.3%2C120.8%20115.1%2C121.2%2071.7%2C184.9%20114.4%2C236.2%20236.3%2C236.2%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_4_2_%22%3E%20%3Cg%20id%3D%22XMLID_29_%22%3E%20%3Cpath%20id%3D%22XMLID_41_%22%20class%3D%22st2%22%20d%3D%22M43.9%2C154.7C14.2%2C184.5%2C0%2C236.2%2C0%2C236.2h115.3V120.8C115.3%2C120.9%2C71.8%2C126.9%2C43.9%2C154.7z%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_2_%22%3E%20%3Cg%20id%3D%22XMLID_43_%22%3E%20%3Cpolygon%20id%3D%22XMLID_53_%22%20class%3D%22st2%22%20points%3D%22115.3%2C0%20115.3%2C120.8%20236.3%2C120.8%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E">
+<style>
+  :root{ color-scheme:dark; --bg:#0d1117; --panel:#161b22; --line:#21262d; --line2:#30363d;
+         --ink:#e6edf3; --txt:#c9d1d9; --muted:#8b949e; --blue:#58a6ff; --blue2:#1f6feb; --fox:#f54009; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+        font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; line-height:1.6; font-size:14.5px; }
+  a{ color:var(--blue); }
+  .topbar{ position:sticky; top:0; z-index:20; background:rgba(13,17,23,.9); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+  .topbar__in{ max-width:820px; margin:0 auto; padding:.55rem 1.2rem; display:flex; align-items:center; gap:.6rem; }
+  .topbar__title{ font-size:.8rem; color:var(--muted); font-weight:700; display:flex; align-items:center; gap:.5rem; }
+  .topbar__title img{ height:18px; vertical-align:-4px; }
+  .langbar{ margin-left:auto; display:flex; gap:.4rem; }
+  .langbar button{ background:var(--panel); color:var(--muted); border:1px solid var(--line2); border-radius:7px;
+                   padding:.28rem .85rem; cursor:pointer; font:inherit; font-size:.8rem; }
+  .langbar button:hover{ color:var(--ink); }
+  body[data-lang="en"] #b-en, body[data-lang="cs"] #b-cs{ color:#fff; border-color:var(--blue2); background:#16263f; }
+
+  .wrap{ max-width:820px; margin:0 auto; padding:2rem 1.2rem 5rem; }
+  h1{ font-size:1.5rem; margin:0 0 .3rem; line-height:1.25; }
+  h1 img{ height:26px; vertical-align:-5px; }
+  h2{ font-size:1.02rem; margin:2rem 0 .7rem; padding-top:1.1rem; border-top:1px solid var(--line); }
+  h3{ font-size:.92rem; margin:1.3rem 0 .4rem; color:var(--ink); }
+  .dot{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:.35rem; vertical-align:1px; }
+  .dot.g{ background:#3fb950; } .dot.b{ background:#58a6ff; } .dot.o{ background:#f0883e; }
+  .dot.r{ background:#f85149; } .dot.m{ background:#8b949e; }
+  p,li{ color:var(--txt); } ul{ padding-left:1.15rem; margin:.5rem 0; } li{ margin:.25rem 0; }
+  .meta{ color:var(--muted); font-size:.8rem; margin-bottom:1.3rem; }
+  code{ background:var(--panel); border:1px solid var(--line); padding:.06rem .36rem; border-radius:5px; font-size:.88em; }
+  pre{ background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:.85rem 1rem; overflow-x:auto; font-size:.8rem; margin:.6rem 0; }
+  table{ border-collapse:collapse; width:100%; font-size:.83rem; margin:.6rem 0; }
+  th,td{ border:1px solid var(--line); padding:.45rem .6rem; text-align:left; vertical-align:top; }
+  th{ background:var(--panel); color:var(--muted); font-weight:600; }
+  .hero{ border:1px solid var(--blue2); background:linear-gradient(180deg,rgba(31,111,235,.10),rgba(31,111,235,.02));
+         border-left:4px solid var(--fox); border-radius:10px; padding:14px 18px; margin:14px 0 22px; }
+  .hero b{ color:var(--ink); }
+  .hero .pts{ font-size:.82rem; color:var(--muted); font-weight:700; margin-top:.5rem; }
+  .ok{ color:#3fb950; } .no{ color:#f85149; }
+  .callout{ border:1px solid var(--line2); border-left:4px solid var(--blue2); background:rgba(31,111,235,.07);
+            border-radius:8px; padding:.7rem .9rem; margin:.7rem 0; font-size:.86rem; color:var(--txt); }
+  .callout b{ color:var(--ink); }
+  /* jazykový přepínač – čistě CSS, funguje i bez JS */
+  body[data-lang="en"] [data-block="cs"]{ display:none; }
+  body[data-lang="cs"] [data-block="en"]{ display:none; }
+  @media(max-width:560px){ h1{ font-size:1.3rem; } }
+  @media print{ .topbar{ position:static; } .langbar{ display:none; } a{ color:var(--ink); } }
+</style>
+</head>
+<body data-lang="en">
+<div class="topbar">
+  <div class="topbar__in">
+    <span class="topbar__title"><img src="data:image/svg+xml,%3Csvg%20version%3D%221.1%22%20id%3D%22Vrstva_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20236.3%20236.2%22%20style%3D%22enable-background%3Anew%200%200%20236.3%20236.2%3B%22%20xml%3Aspace%3D%22preserve%22%3E%20%3Cstyle%20type%3D%22text%2Fcss%22%3E%20.st0%7Bfill%3A%23E74600%3B%7D%20.st1%7Bfill%3A%23CC3000%3B%7D%20.st2%7Bfill%3A%23FF6102%3B%7D%20%3C%2Fstyle%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_3_2_%22%3E%20%3Cg%20id%3D%22XMLID_42_%22%3E%20%3Cpath%20id%3D%22XMLID_3_%22%20class%3D%22st0%22%20d%3D%22M115.3%2C120.8c7.7%2C18.5%2C33.8%2C54.7%2C38.9%2C61c3.6%2C4.5%2C79.2%2C53.4%2C82.1%2C54.5V0%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_2_2_%22%3E%20%3Cg%20id%3D%22XMLID_49_%22%3E%20%3Cpolygon%20id%3D%22XMLID_59_%22%20class%3D%22st1%22%20points%3D%22115.3%2C120.8%20115.1%2C121.2%2071.7%2C184.9%20114.4%2C236.2%20236.3%2C236.2%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_4_2_%22%3E%20%3Cg%20id%3D%22XMLID_29_%22%3E%20%3Cpath%20id%3D%22XMLID_41_%22%20class%3D%22st2%22%20d%3D%22M43.9%2C154.7C14.2%2C184.5%2C0%2C236.2%2C0%2C236.2h115.3V120.8C115.3%2C120.9%2C71.8%2C126.9%2C43.9%2C154.7z%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_2_%22%3E%20%3Cg%20id%3D%22XMLID_43_%22%3E%20%3Cpolygon%20id%3D%22XMLID_53_%22%20class%3D%22st2%22%20points%3D%22115.3%2C0%20115.3%2C120.8%20236.3%2C120.8%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E" alt="Foxentry" width="20" style="vertical-align:-4px"> Foxentry Data Cleaner · docs</span>
+    <div class="langbar">
+      <button id="b-en" onclick="document.body.setAttribute('data-lang','en')">EN</button>
+      <button id="b-cs" onclick="document.body.setAttribute('data-lang','cs')">CS</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ===================== ENGLISH ===================== -->
+<div data-block="en">
+  <h1><img src="data:image/svg+xml,%3Csvg%20version%3D%221.1%22%20id%3D%22Vrstva_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20236.3%20236.2%22%20style%3D%22enable-background%3Anew%200%200%20236.3%20236.2%3B%22%20xml%3Aspace%3D%22preserve%22%3E%20%3Cstyle%20type%3D%22text%2Fcss%22%3E%20.st0%7Bfill%3A%23E74600%3B%7D%20.st1%7Bfill%3A%23CC3000%3B%7D%20.st2%7Bfill%3A%23FF6102%3B%7D%20%3C%2Fstyle%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_3_2_%22%3E%20%3Cg%20id%3D%22XMLID_42_%22%3E%20%3Cpath%20id%3D%22XMLID_3_%22%20class%3D%22st0%22%20d%3D%22M115.3%2C120.8c7.7%2C18.5%2C33.8%2C54.7%2C38.9%2C61c3.6%2C4.5%2C79.2%2C53.4%2C82.1%2C54.5V0%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_2_2_%22%3E%20%3Cg%20id%3D%22XMLID_49_%22%3E%20%3Cpolygon%20id%3D%22XMLID_59_%22%20class%3D%22st1%22%20points%3D%22115.3%2C120.8%20115.1%2C121.2%2071.7%2C184.9%20114.4%2C236.2%20236.3%2C236.2%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_4_2_%22%3E%20%3Cg%20id%3D%22XMLID_29_%22%3E%20%3Cpath%20id%3D%22XMLID_41_%22%20class%3D%22st2%22%20d%3D%22M43.9%2C154.7C14.2%2C184.5%2C0%2C236.2%2C0%2C236.2h115.3V120.8C115.3%2C120.9%2C71.8%2C126.9%2C43.9%2C154.7z%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_2_%22%3E%20%3Cg%20id%3D%22XMLID_43_%22%3E%20%3Cpolygon%20id%3D%22XMLID_53_%22%20class%3D%22st2%22%20points%3D%22115.3%2C0%20115.3%2C120.8%20236.3%2C120.8%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E" alt="Foxentry" width="20" style="vertical-align:-4px"> Foxentry Data Cleaner</h1>
+  <div class="meta">Documentation · technical &amp; security · for customers &nbsp;·&nbsp; v1.0.0 &nbsp;·&nbsp; API: Foxentry v2.1</div>
+
+  <div class="hero">
+    <b>🔒 Your data never leaves your computer.</b> The tool runs locally (Windows / macOS / Linux). Your CSV/Excel file is read on your machine and never uploaded. The only outbound connection is HTTPS to <code>api.foxentry.com</code>, carrying just the individual field values you map for validation — never the whole file.
+    <div class="pts">Local processing · No telemetry · Single egress host · Open source (Apache-2.0)</div>
+  </div>
+
+  <div class="callout">🚀 <b>First time here?</b> Follow the <a href="setup-guide.html">Setup guide</a> to create your Foxentry account, an API project and an API key before your first run.</div>
+
+  <h2>What it is</h2>
+  <p>A small, self-hosted utility that validates and corrects contact data (emails, phones, names, addresses, companies) in your own CSV/Excel files by calling the Foxentry REST API. It runs on your machine and writes results back to local files. ~1,900 lines of readable Python.</p>
+
+  <h2>Architecture &amp; data flow</h2>
+  <p>The file never leaves the machine as a whole. The tool reads it row by row and sends only the field values needed for each validation to <code>api.foxentry.com</code> over TLS; results are written to local files in <code>output/</code>.</p>
+
+  <h2>Technology &amp; dependencies</h2>
+  <ul>
+    <li><b>Runtime:</b> Python ≥ 3.9, cross-platform.</li>
+    <li><b>Network/TLS:</b> Python standard library (<code>urllib</code>, <code>ssl</code>) — no third-party HTTP client; certificate verification on.</li>
+    <li><b>Formats:</b> CSV via stdlib (zero deps); <code>.xlsx</code> via optional <code>openpyxl</code> (MIT). Without it, the tool degrades gracefully to CSV only.</li>
+    <li><b>UI:</b> local web wizard on <code>127.0.0.1</code> (loopback only) or a <code>--cli</code> mode that opens no port.</li>
+    <li><b>Supply chain:</b> one optional MIT dependency; no transitive third-party packages.</li>
+  </ul>
+
+  <h2>Security controls</h2>
+  <table>
+    <tr><th>Control</th><th>Detail</th></tr>
+    <tr><td>Transport</td><td>HTTPS with OS-level TLS; server certificate verification enabled</td></tr>
+    <tr><td>Inbound</td><td>Loopback only (<code>127.0.0.1</code>); API guarded by <code>Host</code>-header check + per-session token; <code>--cli</code> opens nothing</td></tr>
+    <tr><td>Outbound</td><td>Single host <code>api.foxentry.com</code> (configurable) — easy to allowlist. UI is self-contained (font &amp; icons bundled/inline)</td></tr>
+    <tr><td>Telemetry</td><td>None — no usage tracking, no phone-home</td></tr>
+    <tr><td>Logging</td><td>Off by default — no request logs written. The user can enable it per run on the final Order step; when on, the full request and response are saved (API key in headers masked). Retention (<code>LOG_RETENTION_DAYS</code>, default 7) + one-click wipe in the log viewer</td></tr>
+    <tr><td>Secrets</td><td>API key in local <code>config.env</code>; never logged, never written to outputs, masked on screen</td></tr>
+    <tr><td>CSV/formula injection</td><td>On by default — cells starting with <code>= + - @</code> are quoted so Excel won’t evaluate them</td></tr>
+    <tr><td>Resumability</td><td>Crash-safe per-row writes; resume avoids double processing/charging</td></tr>
+    <tr><td>Key restriction</td><td>Foxentry supports restricting the key to specific IPv4 addresses (recommended)</td></tr>
+  </table>
+
+  <h2>Privacy (GDPR)</h2>
+  <p>Input/output files stay on your machine; the tool persists nothing beyond what you produce in <code>output/</code>. Only populated field values are sent (empty cells never leave). You remain the data controller; Foxentry acts as processor for validation queries under your existing agreement. No analytics or profiling.</p>
+  <p><b>Logs.</b> By default the tool writes <b>no</b> request logs to <code>logs/</code>. You can enable logging for a single run on the final Order step; when enabled, the full request and response are saved (the API key in the headers stays masked) so you can inspect exactly what was sent and returned. Request logs are auto-pruned after <code>LOG_RETENTION_DAYS</code> (default 7) and can be wiped any time from the log viewer.</p>
+
+  <h2>How to audit</h2>
+  <ul>
+    <li><b>Read the source</b> — plain, commented Python under <code>foxentry/</code>; no obfuscation, no binaries.</li>
+    <li><b>Inspect egress</b> — behind a proxy or with tcpdump, confirm the only host is <code>api.foxentry.com</code>.</li>
+    <li><b>Verify integrity</b> — <code>sha256sum -c compliance/SHA256SUMS.txt</code> (or <code>Get-FileHash</code> on Windows).</li>
+  </ul>
+
+  <h2>Verify it yourself</h2>
+  <p>Run the tool behind an outbound firewall that allows only <code>api.foxentry.com</code> (and, if you use the optional Excel install, temporarily <code>pypi.org</code> + <code>files.pythonhosted.org</code>). This confirms that no other data leaves the machine. The source is readable and auditable, and integrity can be verified via <code>compliance/SHA256SUMS.txt</code>.</p>
+  <p><b>Air-gapped deployments.</b> The optional &ldquo;Install Excel&rdquo; button is only a fallback &mdash; <code>openpyxl</code> is already bundled in <code>vendor/</code>. Set <code>ALLOW_PIP_INSTALL=off</code> in <code>config.env</code> to disable that button entirely (it then returns <code>disabled</code> without calling pip), leaving runtime egress strictly <code>api.foxentry.com</code>.</p>
+
+  <h2>Vendor security questionnaire</h2>
+  <table>
+    <tr><th>Question</th><th>Answer</th></tr>
+    <tr><td>Stores data remotely?</td><td><span class="no">No</span> — all files stay local</td></tr>
+    <tr><td>Telemetry / phone-home?</td><td><span class="no">No</span></td></tr>
+    <tr><td>External endpoints?</td><td>App contacts only <code>api.foxentry.com</code> (HTTPS). The UI is fully self-contained — font and icons are bundled/inline, no third-party requests, works offline</td></tr>
+    <tr><td>Encrypted in transit?</td><td><span class="ok">Yes</span> — TLS with certificate verification</td></tr>
+    <tr><td>Credentials?</td><td>Local <code>config.env</code>; never logged/sent; can be IP-restricted at Foxentry</td></tr>
+    <tr><td>Admin/root needed?</td><td><span class="no">No</span></td></tr>
+    <tr><td>Inbound ports?</td><td>Loopback-only UI port; not network-reachable; API behind <code>Host</code> + token; <code>--cli</code> opens none</td></tr>
+    <tr><td>Dependencies?</td><td>One optional, MIT (<code>openpyxl==3.1.5</code>), pinned and pre-bundled in <code>vendor/</code> (no PyPI needed)</td></tr>
+    <tr><td>Auto-update?</td><td><span class="no">None</span> — manual file replacement</td></tr>
+    <tr><td>Auditable / obfuscated?</td><td>Source only, plain Python + HTML; checksums provided</td></tr>
+    <tr><td>Run controllable?</td><td><span class="ok">Yes</span> — cost estimate, explicit confirmation, Ctrl+C with safe resume</td></tr>
+  </table>
+
+  <h2>Using it</h2>
+  <ul>
+    <li><b>Start:</b> run <code>START.bat</code> (Windows) or <code>python run.py</code> — the wizard opens in your browser at <code>127.0.0.1</code>.</li>
+    <li><b>Map columns</b> to data types (email, phone, name, address, company); leave others on “ignore”.</li>
+    <li><b>Estimate</b> shows cost &amp; time before anything is sent; you confirm to run.</li>
+    <li><b>Results</b> land in <code>output/</code> (cleaned file + HTML report). Original columns are kept; validation columns are added.</li>
+    <li><b>Stop/resume:</b> close the window or Ctrl+C anytime — re-running resumes where it stopped, without re-charging done rows.</li>
+    <li><b>Encoding:</b> CSV is read/written UTF-8 (BOM for Excel). <b>Troubleshooting 401:</b> check the API key and that it isn’t IP-restricted; the app uses API version 2.1.</li>
+  </ul>
+
+  <h2>Output file &amp; results</h2>
+  <p>The cleaner <b>never overwrites your input</b>. It writes a new file into <code>output/</code> in the same format as the input (<code>.csv</code> stays CSV, <code>.xlsx</code> stays XLSX), plus a standalone HTML report. All original columns are kept unchanged; validation columns are appended after them, and any enrichment columns are added at the very end.</p>
+
+  <h3>Column layout</h3>
+  <p>For every validated field group (e.g. one address = street + city + ZIP) these columns are added, in this order:</p>
+  <table>
+    <tr><th>Column</th><th>Meaning</th></tr>
+    <tr><td><code>&lt;group&gt;_result</code></td><td>Human-readable status of the record (see the status table below).</td></tr>
+    <tr><td><code>&lt;column&gt;_updated</code></td><td>The value <b>after correction</b> — one per mapped column. If Foxentry corrected or normalised the value it is written here; otherwise it equals the original. Your original column stays untouched, so you can compare side by side.</td></tr>
+    <tr><td><code>&lt;group&gt;_suggestion</code></td><td>An alternative the API offers when the value is invalid but a likely candidate exists (e.g. a corrected e-mail). Empty when there is nothing to suggest.</td></tr>
+    <tr><td><code>&lt;group&gt;_note</code></td><td>Why the record stayed invalid — the error description and which fields it relates to, e.g. <code>Value is not valid. (streetWithNumber, city)</code>. Empty when the record ended valid.</td></tr>
+  </table>
+  <p>“group” is the validation key (<code>email</code>, <code>phone</code>, <code>name</code>, <code>location</code>, <code>company</code>; or <code>location1</code>, <code>location2</code>… when you map several of the same type).</p>
+
+  <h3>Enrichment columns (full data scope)</h3>
+  <p>When a service is set to the <b>full</b> data scope, Foxentry returns rich data beyond a yes/no verdict. The cleaner writes each field as its own column, appended at the end of the file. These are billed at the enriched rate (shown in the order step). Availability differs by country and source — fields the API doesn’t return for a given record simply stay empty.</p>
+
+  <p><b>Name</b> — parsed parts and linguistic data (CZ, SK):</p>
+  <table>
+    <tr><th>Column</th><th>Description</th></tr>
+    <tr><td><code>_full</code></td><td>Name + surname combined (<code>nameSurname</code>).</td></tr>
+    <tr><td><code>_firstName</code></td><td>First name, parsed out.</td></tr>
+    <tr><td><code>_surname</code></td><td>Surname, parsed out.</td></tr>
+    <tr><td><code>_degreesBefore</code></td><td>Degrees before the name (e.g. Ing., Mgr.).</td></tr>
+    <tr><td><code>_degreesAfter</code></td><td>Degrees after the surname (e.g. Ph.D.).</td></tr>
+    <tr><td><code>_gender</code></td><td>Detected gender (male / female).</td></tr>
+    <tr><td><code>_vocative</code></td><td>Correct vocative (5th case).</td></tr>
+    <tr><td><code>_nameday_CZ</code> / <code>_nameday_SK</code></td><td>Name day in CZ / SK calendar (DD.MM.).</td></tr>
+  </table>
+
+  <p><b>Address</b> — administrative breakdown, coordinates and registry IDs (CZ/SK/PL fullest; others vary):</p>
+  <table>
+    <tr><th>Column</th><th>Description</th></tr>
+    <tr><td><code>_full</code></td><td>Formatted full address.</td></tr>
+    <tr><td><code>_state</code></td><td>Federal state (DE, AT, CH, BE…).</td></tr>
+    <tr><td><code>_region</code></td><td>Region (kraj).</td></tr>
+    <tr><td><code>_district</code></td><td>District (okres).</td></tr>
+    <tr><td><code>_cityPart</code></td><td>City part (část obce) — CZ/SK.</td></tr>
+    <tr><td><code>_cityDistrict</code></td><td>City district / borough (městská část) — CZ.</td></tr>
+    <tr><td><code>_cadastralArea</code></td><td>Cadastral area (katastrální území) — CZ.</td></tr>
+    <tr><td><code>_latitude</code> / <code>_longitude</code></td><td>GPS coordinates.</td></tr>
+    <tr><td><code>_externalId</code></td><td>External registry ID — CZ = RUIAN, PL = government data.</td></tr>
+    <tr><td><code>_internalId</code></td><td>Foxentry internal address ID.</td></tr>
+  </table>
+
+  <p><b>Company</b> — registry identifiers, VAT and key facts (CZ, SK, PL, HU):</p>
+  <table>
+    <tr><th>Column</th><th>Description</th></tr>
+    <tr><td><code>_name</code></td><td>Official company name.</td></tr>
+    <tr><td><code>_registrationNumber</code></td><td>Registration number — CZ/SK = IČO, PL = REGON.</td></tr>
+    <tr><td><code>_taxNumber</code></td><td>Tax number — SK = DIČ, PL = NIP.</td></tr>
+    <tr><td><code>_vatNumber</code></td><td>VAT number — CZ = DIČ, SK = IČ DPH, PL = VAT ID.</td></tr>
+    <tr><td><code>_vatNumberSpecial</code></td><td>Group-registration VAT number (CZ).</td></tr>
+    <tr><td><code>_address</code></td><td>Registered address.</td></tr>
+    <tr><td><code>_addressOfficial</code></td><td>Address as held in the official registry.</td></tr>
+    <tr><td><code>_legalForm</code></td><td>Legal form (e.g. Akciová společnost).</td></tr>
+    <tr><td><code>_nace</code></td><td>Main NACE activity (type of business).</td></tr>
+    <tr><td><code>_vatStatus</code></td><td>VAT payer status.</td></tr>
+    <tr><td><code>_vatReliable</code></td><td>VAT reliability flag (yes / no).</td></tr>
+    <tr><td><code>_created</code></td><td>Date the company was established.</td></tr>
+    <tr><td><code>_terminated</code></td><td>Date terminated, if applicable.</td></tr>
+    <tr><td><code>_employees</code></td><td>Employee-count category (e.g. 10–19).</td></tr>
+  </table>
+  <p>Foxentry returns even more under the full scope (NACE list, registrations, VAT history, databoxes, insolvency, business premises, company bodies, capital…). The cleaner extracts the single-value fields above; if you need the structured/list data, use the API directly. Email and phone add no enrichment columns — their output is the verdict plus a correction in <code>_updated</code>.</p>
+
+  <h3>Result statuses</h3>
+  <p>Each <code>_result</code> cell holds one of the statuses below. “Fixed” means a corrected value is in <code>_updated</code>; “still invalid” means check <code>_note</code> (and <code>_suggestion</code>).</p>
+  <table>
+    <tr><th>Status</th><th>Meaning &amp; what to do</th></tr>
+    <tr><td><span class="dot g"></span><code>valid</code></td><td>Correct as submitted. Nothing to do.</td></tr>
+    <tr><td><span class="dot g"></span><code>valid (corrected)</code></td><td>Valid, but normalised (formatting, diacritics). Use <code>_updated</code>.</td></tr>
+    <tr><td><span class="dot b"></span><code>corrected</code></td><td>Was invalid, fully fixed by Foxentry → use the value in <code>_updated</code>. This is data you’d otherwise lose to typos.</td></tr>
+    <tr><td><span class="dot o"></span><code>partially corrected</code></td><td>Part was fixed, but the record as a whole is still invalid. <code>_note</code> says which field and why.</td></tr>
+    <tr><td><span class="dot r"></span><code>invalid</code></td><td>Invalid and not fixable. See <code>_note</code>; consider dropping or manual review.</td></tr>
+    <tr><td><span class="dot o"></span><code>invalid (suggestion available)</code></td><td>Invalid, but a likely candidate is in <code>_suggestion</code> — review before applying.</td></tr>
+    <tr><td><span class="dot m"></span><code>uncertain</code> / <code>uncertain (…)</code></td><td>Foxentry could not determine validity (rare). Treat with caution; <code>_suggestion</code>/<code>_updated</code> may still help.</td></tr>
+    <tr><td><span class="dot m"></span><code>unverified</code> / <code>(empty)</code></td><td>Not validated — the field was empty, so it was skipped (and not charged).</td></tr>
+    <tr><td><span class="dot r"></span><code>error</code></td><td>Communication error with the API (e.g. a timeout). The row is counted as an error; re-run to retry just those.</td></tr>
+  </table>
+
+  <h3>Recommendations</h3>
+  <ul>
+    <li><b>Run a test batch first.</b> Use the small test scope (or a custom row count) to sanity-check your mapping and pricing before the full run.</li>
+    <li><b>Map a country column when you have one</b> (e.g. <code>země</code> → Country). Otherwise no country is sent; you can force a default in the address/company settings, but per-row country is more accurate for multi-country data.</li>
+    <li><b>Keep originals for comparison.</b> Originals are never overwritten — diff <code>&lt;column&gt;</code> against <code>&lt;column&gt;_updated</code> to see exactly what changed.</li>
+    <li><b>Act by status:</b> apply <code>_updated</code> for <i>corrected</i>; review <code>_suggestion</code> for <i>suggestion available</i>; read <code>_note</code> for <i>partially corrected</i> / <i>invalid</i> to decide drop vs. fix.</li>
+    <li><b>Use full data scope</b> only when you need the extra columns (GPS, region, vocative, name days, legal form…) — it costs more per row.</li>
+    <li><b>Large files:</b> raise concurrency in ⚙ Advanced for faster throughput; you can stop and resume anytime without re-charging finished rows.</li>
+    <li><b>Marketing payoff:</b> not e-mailing invalid addresses protects your sender reputation; corrected postal addresses cut returned shipments. The report’s “Foxentry value” section quantifies the input vs. output error rate and how many records were rescued.</li>
+  </ul>
+</div>
+
+<!-- ===================== ČEŠTINA ===================== -->
+<div data-block="cs">
+  <h1><img src="data:image/svg+xml,%3Csvg%20version%3D%221.1%22%20id%3D%22Vrstva_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20236.3%20236.2%22%20style%3D%22enable-background%3Anew%200%200%20236.3%20236.2%3B%22%20xml%3Aspace%3D%22preserve%22%3E%20%3Cstyle%20type%3D%22text%2Fcss%22%3E%20.st0%7Bfill%3A%23E74600%3B%7D%20.st1%7Bfill%3A%23CC3000%3B%7D%20.st2%7Bfill%3A%23FF6102%3B%7D%20%3C%2Fstyle%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_3_2_%22%3E%20%3Cg%20id%3D%22XMLID_42_%22%3E%20%3Cpath%20id%3D%22XMLID_3_%22%20class%3D%22st0%22%20d%3D%22M115.3%2C120.8c7.7%2C18.5%2C33.8%2C54.7%2C38.9%2C61c3.6%2C4.5%2C79.2%2C53.4%2C82.1%2C54.5V0%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_2_2_%22%3E%20%3Cg%20id%3D%22XMLID_49_%22%3E%20%3Cpolygon%20id%3D%22XMLID_59_%22%20class%3D%22st1%22%20points%3D%22115.3%2C120.8%20115.1%2C121.2%2071.7%2C184.9%20114.4%2C236.2%20236.3%2C236.2%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_4_2_%22%3E%20%3Cg%20id%3D%22XMLID_29_%22%3E%20%3Cpath%20id%3D%22XMLID_41_%22%20class%3D%22st2%22%20d%3D%22M43.9%2C154.7C14.2%2C184.5%2C0%2C236.2%2C0%2C236.2h115.3V120.8C115.3%2C120.9%2C71.8%2C126.9%2C43.9%2C154.7z%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_2_%22%3E%20%3Cg%20id%3D%22XMLID_43_%22%3E%20%3Cpolygon%20id%3D%22XMLID_53_%22%20class%3D%22st2%22%20points%3D%22115.3%2C0%20115.3%2C120.8%20236.3%2C120.8%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E" alt="Foxentry" width="20" style="vertical-align:-4px"> Foxentry čistič dat</h1>
+  <div class="meta">Dokumentace · technická &amp; bezpečnostní · pro zákazníky &nbsp;·&nbsp; v1.0.0 &nbsp;·&nbsp; API: Foxentry v2.1</div>
+
+  <div class="hero">
+    <b>🔒 Vaše data nikdy neopustí váš počítač.</b> Nástroj běží lokálně (Windows / macOS / Linux). Soubor CSV/Excel se čte u vás a nikam se nenahrává. Jediné odchozí spojení je HTTPS na <code>api.foxentry.com</code> a nese jen jednotlivé hodnoty polí, které k validaci namapujete — nikdy celý soubor.
+    <div class="pts">Lokální zpracování · Žádná telemetrie · Jediný cíl odchozího provozu · Auditovatelný zdroj</div>
+  </div>
+
+  <div class="callout">🚀 <b>Jste tu poprvé?</b> Před prvním spuštěním projděte <a href="setup-guide.html">Návod na zprovoznění</a> — založení účtu Foxentry, API projektu a API klíče.</div>
+
+  <h2>Co to je</h2>
+  <p>Malý lokální nástroj, který validuje a opravuje kontaktní data (e‑maily, telefony, jména, adresy, firmy) ve vašich CSV/Excel souborech voláním REST API Foxentry. Běží u vás a výsledky zapisuje do lokálních souborů. ~1 900 řádků čitelného Pythonu.</p>
+
+  <h2>Architektura a tok dat</h2>
+  <p>Soubor jako celek nikdy neopustí stroj. Nástroj ho čte řádek po řádku a posílá jen hodnoty polí potřebné pro danou validaci na <code>api.foxentry.com</code> přes TLS; výsledky zapisuje lokálně do <code>output/</code>.</p>
+
+  <h2>Technologie a závislosti</h2>
+  <ul>
+    <li><b>Běhové prostředí:</b> Python ≥ 3.9, multiplatformní.</li>
+    <li><b>Síť/TLS:</b> standardní knihovna Pythonu (<code>urllib</code>, <code>ssl</code>) — žádný cizí HTTP klient; ověřování certifikátu zapnuté.</li>
+    <li><b>Formáty:</b> CSV přes stdlib (bez závislostí); <code>.xlsx</code> přes volitelný <code>openpyxl</code> (MIT). Bez něj nástroj funguje jen s CSV.</li>
+    <li><b>UI:</b> lokální webový průvodce na <code>127.0.0.1</code> (jen loopback) nebo režim <code>--cli</code> bez otevřeného portu.</li>
+    <li><b>Dodavatelský řetězec:</b> jedna volitelná MIT závislost; žádné tranzitivní balíčky.</li>
+  </ul>
+
+  <h2>Bezpečnostní opatření</h2>
+  <table>
+    <tr><th>Opatření</th><th>Detail</th></tr>
+    <tr><td>Přenos</td><td>HTTPS s TLS z OS; ověřování certifikátu serveru zapnuté</td></tr>
+    <tr><td>Příchozí</td><td>Jen loopback (<code>127.0.0.1</code>); API chráněné kontrolou hlavičky <code>Host</code> + session tokenem; <code>--cli</code> neotevírá nic</td></tr>
+    <tr><td>Odchozí</td><td>Jediný cíl <code>api.foxentry.com</code> (konfigurovatelné) — snadné povolit na firewallu. UI je soběstačné (font i ikony zabalené/inline)</td></tr>
+    <tr><td>Telemetrie</td><td>Žádná — žádné sledování, žádné „volání domů"</td></tr>
+    <tr><td>Logování</td><td>Výchozí vypnuto — žádné request logy se nezapisují. Uživatel je může zapnout pro konkrétní běh na posledním kroku Order; po zapnutí se uloží celý request i odpověď (API klíč v hlavičkách maskovaný). Retence (<code>LOG_RETENTION_DAYS</code>, výchozí 7) + smazání jedním klikem v prohlížeči logů</td></tr>
+    <tr><td>Tajemství</td><td>API klíč v lokálním <code>config.env</code>; nikdy se neloguje, nezapisuje do výstupů, na obrazovce maskovaný</td></tr>
+    <tr><td>CSV/formula injection</td><td>Výchozí zapnuto — buňky začínající <code>= + - @</code> se uvozují, aby je Excel nevyhodnotil</td></tr>
+    <tr><td>Navázání</td><td>Bezpečné zápisy po řádcích; navázání nezdvojuje zpracování ani účtování</td></tr>
+    <tr><td>Omezení klíče</td><td>Foxentry umožňuje omezit klíč na konkrétní IPv4 (doporučeno)</td></tr>
+  </table>
+
+  <h2>Soukromí (GDPR)</h2>
+  <p>Vstupní i výstupní soubory zůstávají u vás; nástroj neukládá nic nad rámec toho, co vytvoříte v <code>output/</code>. Posílají se jen vyplněné hodnoty (prázdné buňky neodcházejí). Zůstáváte správcem dat; Foxentry je zpracovatel validačních dotazů dle vaší stávající smlouvy. Žádná analytika ani profilování.</p>
+  <p><b>Logy.</b> Ve výchozím stavu se do <code>logs/</code> <b>nezapisuje</b> žádný request log. Logování lze zapnout pro jeden běh na posledním kroku Order; po zapnutí se uloží celý request i odpověď (API klíč v hlavičkách zůstává maskovaný), takže vidíte přesně, co se odeslalo a vrátilo. Request logy se automaticky promazávají po <code>LOG_RETENTION_DAYS</code> (výchozí 7) a kdykoli je lze smazat v prohlížeči logů.</p>
+
+  <h2>Jak provést audit</h2>
+  <ul>
+    <li><b>Čtěte zdroj</b> — prostý komentovaný Python ve <code>foxentry/</code>; žádná obfuskace, žádné binárky.</li>
+    <li><b>Sledujte egress</b> — za proxy nebo přes tcpdump ověřte, že jediný cíl je <code>api.foxentry.com</code>.</li>
+    <li><b>Ověřte integritu</b> — <code>sha256sum -c compliance/SHA256SUMS.txt</code> (na Windows <code>Get-FileHash</code>).</li>
+  </ul>
+
+  <h2>Ověřte si to sami</h2>
+  <p>Spusťte nástroj s odchozím firewallem, který povolí pouze <code>api.foxentry.com</code> (a při použití volitelné instalace Excelu dočasně <code>pypi.org</code> + <code>files.pythonhosted.org</code>). Ověříte tak, že žádná jiná data počítač neopouštějí. Zdrojový kód je čitelný a auditovatelný a integritu lze ověřit přes <code>compliance/SHA256SUMS.txt</code>.</p>
+  <p><b>Izolované (air-gapped) instalace.</b> Tlačítko „Nainstalovat Excel" je jen záloha — <code>openpyxl</code> je už přibalený ve <code>vendor/</code>. Nastavením <code>ALLOW_PIP_INSTALL=off</code> v <code>config.env</code> ho úplně vypnete (vrátí <code>disabled</code> bez volání pip) a runtime egress je pak výhradně <code>api.foxentry.com</code>.</p>
+
+  <h2>Dodavatelský bezpečnostní dotazník</h2>
+  <table>
+    <tr><th>Otázka</th><th>Odpověď</th></tr>
+    <tr><td>Ukládá data vzdáleně?</td><td><span class="no">Ne</span> — vše zůstává lokálně</td></tr>
+    <tr><td>Telemetrie / volání domů?</td><td><span class="no">Ne</span></td></tr>
+    <tr><td>Externí cíle?</td><td>Aplikace kontaktuje jen <code>api.foxentry.com</code> (HTTPS). UI je plně soběstačné — font i ikony jsou zabalené/inline, žádné požadavky na třetí strany, funguje i offline</td></tr>
+    <tr><td>Šifrováno při přenosu?</td><td><span class="ok">Ano</span> — TLS s ověřením certifikátu</td></tr>
+    <tr><td>Přihlašovací údaje?</td><td>Lokální <code>config.env</code>; neloguje/neodesílá se; lze omezit na IP u Foxentry</td></tr>
+    <tr><td>Potřebuje admin/root?</td><td><span class="no">Ne</span></td></tr>
+    <tr><td>Příchozí porty?</td><td>Jen loopback port pro UI; ze sítě nedostupný; API za kontrolou <code>Host</code> + token; <code>--cli</code> neotevírá žádný</td></tr>
+    <tr><td>Závislosti?</td><td>Jedna volitelná, MIT (<code>openpyxl==3.1.5</code>), pinned a předbalená ve <code>vendor/</code> (PyPI není potřeba)</td></tr>
+    <tr><td>Auto‑aktualizace?</td><td><span class="no">Žádná</span> — ruční výměna souborů</td></tr>
+    <tr><td>Auditovatelné / obfuskované?</td><td>Jen zdroj, prostý Python + HTML; přiloženy kontrolní součty</td></tr>
+    <tr><td>Lze běh řídit?</td><td><span class="ok">Ano</span> — odhad ceny, výslovné potvrzení, Ctrl+C s bezpečným navázáním</td></tr>
+  </table>
+
+  <h2>Jak se to používá</h2>
+  <ul>
+    <li><b>Spuštění:</b> <code>START.bat</code> (Windows) nebo <code>python run.py</code> — průvodce se otevře v prohlížeči na <code>127.0.0.1</code>.</li>
+    <li><b>Spárujte sloupce</b> s typy dat (e‑mail, telefon, jméno, adresa, firma); ostatní nechte na „ignorovat".</li>
+    <li><b>Odhad</b> ukáže cenu a čas dřív, než se cokoli odešle; běh potvrzujete vy.</li>
+    <li><b>Výsledky</b> jsou v <code>output/</code> (vyčištěný soubor + HTML report). Původní sloupce zůstávají, validační se přidají.</li>
+    <li><b>Přerušení/navázání:</b> okno zavřete nebo Ctrl+C kdykoli — opětovné spuštění naváže tam, kde skončilo, bez opakovaného účtování.</li>
+    <li><b>Kódování:</b> CSV se čte/zapisuje v UTF‑8 (BOM pro Excel). <b>Řešení 401:</b> zkontrolujte API klíč a zda není omezený na IP; aplikace používá API verzi 2.1.</li>
+  </ul>
+
+  <h2>Výstupní soubor a výsledky</h2>
+  <p>Čistič <b>nikdy nepřepisuje váš vstup</b>. Zapíše nový soubor do <code>output/</code> ve stejném formátu jako vstup (<code>.csv</code> zůstává CSV, <code>.xlsx</code> zůstává XLSX) plus samostatný HTML report. Všechny původní sloupce zůstávají beze změny; validační sloupce se přidají za ně a případné obohacovací sloupce úplně na konec.</p>
+
+  <h3>Rozložení sloupců</h3>
+  <p>Pro každou skupinu validovaných polí (např. jedna adresa = ulice + město + PSČ) se přidají tyto sloupce v tomto pořadí:</p>
+  <table>
+    <tr><th>Sloupec</th><th>Význam</th></tr>
+    <tr><td><code>&lt;skupina&gt;_result</code></td><td>Srozumitelný stav záznamu (viz tabulka stavů níže).</td></tr>
+    <tr><td><code>&lt;sloupec&gt;_updated</code></td><td>Hodnota <b>po korekci</b> — jeden sloupec na každé namapované pole. Pokud Foxentry hodnotu opravil nebo normalizoval, je tu; jinak se rovná originálu. Původní sloupec zůstává nedotčený, takže můžete porovnávat.</td></tr>
+    <tr><td><code>&lt;skupina&gt;_suggestion</code></td><td>Alternativa, kterou API nabídne, když je hodnota nevalidní, ale existuje pravděpodobný kandidát (např. opravený e‑mail). Prázdné, když není co navrhnout.</td></tr>
+    <tr><td><code>&lt;skupina&gt;_note</code></td><td>Proč záznam zůstal nevalidní — popis chyby a čeho se týká, např. <code>Value is not valid. (streetWithNumber, city)</code>. Prázdné, když záznam skončil jako platný.</td></tr>
+  </table>
+  <p>„skupina" je klíč validace (<code>email</code>, <code>phone</code>, <code>name</code>, <code>location</code>, <code>company</code>; nebo <code>location1</code>, <code>location2</code>… když namapujete víc téhož typu).</p>
+
+  <h3>Obohacovací sloupce (full datascope)</h3>
+  <p>Když je služba nastavená na <b>full</b> datascope, Foxentry vrací bohatá data nad rámec verdiktu ano/ne. Čistič každé pole zapíše jako samostatný sloupec na konec souboru. Účtují se sazbou za obohacení (vidíte ji v kroku objednávky). Dostupnost se liší podle země a zdroje — pole, která API pro daný záznam nevrátí, zůstanou prázdná.</p>
+
+  <p><b>Jméno</b> — rozparsované části a jazyková data (CZ, SK):</p>
+  <table>
+    <tr><th>Sloupec</th><th>Popis</th></tr>
+    <tr><td><code>_full</code></td><td>Jméno + příjmení dohromady (<code>nameSurname</code>).</td></tr>
+    <tr><td><code>_firstName</code></td><td>Křestní jméno (rozparsované).</td></tr>
+    <tr><td><code>_surname</code></td><td>Příjmení (rozparsované).</td></tr>
+    <tr><td><code>_degreesBefore</code></td><td>Tituly před jménem (např. Ing., Mgr.).</td></tr>
+    <tr><td><code>_degreesAfter</code></td><td>Tituly za příjmením (např. Ph.D.).</td></tr>
+    <tr><td><code>_gender</code></td><td>Rozpoznané pohlaví (muž / žena).</td></tr>
+    <tr><td><code>_vocative</code></td><td>Správný 5. pád (oslovení).</td></tr>
+    <tr><td><code>_nameday_CZ</code> / <code>_nameday_SK</code></td><td>Svátek v CZ / SK kalendáři (DD.MM.).</td></tr>
+  </table>
+
+  <p><b>Adresa</b> — administrativní členění, souřadnice a registrová ID (nejvíc CZ/SK/PL, jinde dle země):</p>
+  <table>
+    <tr><th>Sloupec</th><th>Popis</th></tr>
+    <tr><td><code>_full</code></td><td>Formátovaná úplná adresa.</td></tr>
+    <tr><td><code>_state</code></td><td>Spolková země (DE, AT, CH, BE…).</td></tr>
+    <tr><td><code>_region</code></td><td>Kraj.</td></tr>
+    <tr><td><code>_district</code></td><td>Okres.</td></tr>
+    <tr><td><code>_cityPart</code></td><td>Část obce — CZ/SK.</td></tr>
+    <tr><td><code>_cityDistrict</code></td><td>Městská část / obvod — CZ.</td></tr>
+    <tr><td><code>_cadastralArea</code></td><td>Katastrální území — CZ.</td></tr>
+    <tr><td><code>_latitude</code> / <code>_longitude</code></td><td>GPS souřadnice.</td></tr>
+    <tr><td><code>_externalId</code></td><td>Externí registrové ID — CZ = RUIAN, PL = vládní data.</td></tr>
+    <tr><td><code>_internalId</code></td><td>Interní ID adresy ve Foxentry.</td></tr>
+  </table>
+
+  <p><b>Firma</b> — registrové identifikátory, DPH a klíčová fakta (CZ, SK, PL, HU):</p>
+  <table>
+    <tr><th>Sloupec</th><th>Popis</th></tr>
+    <tr><td><code>_name</code></td><td>Oficiální název firmy.</td></tr>
+    <tr><td><code>_registrationNumber</code></td><td>Registrační číslo — CZ/SK = IČO, PL = REGON.</td></tr>
+    <tr><td><code>_taxNumber</code></td><td>Daňové číslo — SK = DIČ, PL = NIP.</td></tr>
+    <tr><td><code>_vatNumber</code></td><td>DPH číslo — CZ = DIČ, SK = IČ DPH, PL = VAT ID.</td></tr>
+    <tr><td><code>_vatNumberSpecial</code></td><td>Skupinové DIČ k DPH (CZ).</td></tr>
+    <tr><td><code>_address</code></td><td>Sídlo (validovaná adresa).</td></tr>
+    <tr><td><code>_addressOfficial</code></td><td>Adresa dle oficiálního registru.</td></tr>
+    <tr><td><code>_legalForm</code></td><td>Právní forma (např. Akciová společnost).</td></tr>
+    <tr><td><code>_nace</code></td><td>Hlavní obor činnosti (NACE).</td></tr>
+    <tr><td><code>_vatStatus</code></td><td>Stav plátcovství DPH.</td></tr>
+    <tr><td><code>_vatReliable</code></td><td>Spolehlivost plátce DPH (ano / ne).</td></tr>
+    <tr><td><code>_created</code></td><td>Datum vzniku firmy.</td></tr>
+    <tr><td><code>_terminated</code></td><td>Datum zániku, pokud nastal.</td></tr>
+    <tr><td><code>_employees</code></td><td>Kategorie počtu zaměstnanců (např. 10–19).</td></tr>
+  </table>
+  <p>Ve full datascope toho Foxentry vrací ještě víc (seznam NACE, registrace, historie DPH, datové schránky, insolvence, provozovny, orgány, kapitál…). Čistič vytahuje výše uvedená jednohodnotová pole; pokud potřebujete strukturovaná/seznamová data, použijte přímo API. E‑mail a telefon obohacovací sloupce nepřidávají — jejich výstupem je verdikt a oprava v <code>_updated</code>.</p>
+
+  <h3>Stavy výsledku</h3>
+  <p>Každá buňka <code>_result</code> obsahuje jeden ze stavů níže. „Opraveno" znamená, že opravená hodnota je v <code>_updated</code>; „stále nevalidní" znamená koukněte do <code>_note</code> (a <code>_suggestion</code>).</p>
+  <table>
+    <tr><th>Stav</th><th>Význam a co s tím</th></tr>
+    <tr><td><span class="dot g"></span><code>platné</code></td><td>Správně tak, jak bylo zadáno. Není co řešit.</td></tr>
+    <tr><td><span class="dot g"></span><code>platné (opraveno)</code></td><td>Platné, jen normalizované (formát, diakritika). Použijte <code>_updated</code>.</td></tr>
+    <tr><td><span class="dot b"></span><code>opraveno</code></td><td>Bylo nevalidní, Foxentry plně opravil → použijte hodnotu z <code>_updated</code>. To jsou data, o která byste jinak kvůli překlepům přišli.</td></tr>
+    <tr><td><span class="dot o"></span><code>částečně opraveno</code></td><td>Část se opravila, ale záznam jako celek zůstává nevalidní. V <code>_note</code> je které pole a proč.</td></tr>
+    <tr><td><span class="dot r"></span><code>neplatné</code></td><td>Nevalidní a neopravitelné. Viz <code>_note</code>; zvažte vyřazení nebo ruční kontrolu.</td></tr>
+    <tr><td><span class="dot o"></span><code>neplatné (existuje návrh)</code></td><td>Nevalidní, ale pravděpodobný kandidát je v <code>_suggestion</code> — před použitím zkontrolujte.</td></tr>
+    <tr><td><span class="dot m"></span><code>nejisté</code> / <code>nejisté (…)</code></td><td>Foxentry nedokázal určit platnost (vzácné). Buďte opatrní; <code>_suggestion</code>/<code>_updated</code> může i tak pomoct.</td></tr>
+    <tr><td><span class="dot m"></span><code>neověřeno</code> / <code>(nevyplněno)</code></td><td>Nevalidováno — pole bylo prázdné, takže se přeskočilo (a neúčtovalo).</td></tr>
+    <tr><td><span class="dot r"></span><code>chyba</code></td><td>Chyba komunikace s API (např. timeout). Řádek se počítá jako chyba; opětovným spuštěním se zkusí znovu jen tyto.</td></tr>
+  </table>
+
+  <h3>Doporučení</h3>
+  <ul>
+    <li><b>Nejdřív testovací várka.</b> Použijte malý testovací rozsah (nebo vlastní počet řádků) a zkontrolujte mapování i cenu před plným během.</li>
+    <li><b>Namapujte sloupec se zemí, pokud ho máte</b> (např. <code>země</code> → Country). Jinak se žádná země neposílá; v nastavení adresy/firmy lze vynutit výchozí zemi, ale u vícezemních dat je přesnější země per řádek.</li>
+    <li><b>Originály pro porovnání.</b> Originály se nikdy nepřepisují — porovnejte <code>&lt;sloupec&gt;</code> vs. <code>&lt;sloupec&gt;_updated</code> a vidíte přesně, co se změnilo.</li>
+    <li><b>Postupujte podle stavu:</b> u <i>opraveno</i> použijte <code>_updated</code>; u <i>existuje návrh</i> zkontrolujte <code>_suggestion</code>; u <i>částečně opraveno</i> / <i>neplatné</i> přečtěte <code>_note</code> a rozhodněte vyřadit vs. opravit.</li>
+    <li><b>Full datascope</b> používejte jen když potřebujete sloupce navíc (GPS, kraj, 5.&nbsp;pád, jmeniny, právní forma…) — stojí víc za řádek.</li>
+    <li><b>Velké soubory:</b> v ⚙ Advanced zvyšte souběžnost pro vyšší propustnost; běh lze kdykoli zastavit a navázat bez opakovaného účtování hotových řádků.</li>
+    <li><b>Marketingový přínos:</b> neposílání na nevalidní e‑maily chrání reputaci odesílatele, opravené poštovní adresy snižují vratkovost. Sekce „Přínos Foxentry" v reportu vyčíslí chybovost na vstupu vs. výstupu a kolik záznamů se zachránilo.</li>
+  </ul>
+</div>
+
+</div>
+</body>
+</html>

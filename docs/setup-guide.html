@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foxentry Data Cleaner · Setup guide</title>
+<style>
+  :root{ color-scheme:dark; --bg:#0d1117; --panel:#161b22; --line:#21262d; --line2:#30363d;
+         --ink:#e6edf3; --txt:#c9d1d9; --muted:#8b949e; --blue:#58a6ff; --blue2:#1f6feb; --fox:#f54009; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+        font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; line-height:1.6; font-size:14.5px; }
+  a{ color:var(--blue); }
+  .topbar{ position:sticky; top:0; z-index:20; background:rgba(13,17,23,.9); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+  .topbar__in{ max-width:760px; margin:0 auto; padding:.55rem 1.2rem; display:flex; align-items:center; gap:.6rem; }
+  .topbar__title{ font-size:.8rem; color:var(--muted); font-weight:700; display:flex; align-items:center; gap:.5rem; }
+  .topbar__title img{ height:18px; vertical-align:-4px; }
+  .langbar{ margin-left:auto; display:flex; gap:.4rem; }
+  .langbar button{ background:var(--panel); color:var(--muted); border:1px solid var(--line2); border-radius:7px;
+                   padding:.28rem .85rem; cursor:pointer; font:inherit; font-size:.8rem; }
+  .langbar button:hover{ color:var(--ink); }
+  body[data-lang="en"] #b-en, body[data-lang="cs"] #b-cs{ color:#fff; border-color:var(--blue2); background:#16263f; }
+
+  .wrap{ max-width:760px; margin:0 auto; padding:2rem 1.2rem 5rem; }
+  h1{ font-size:1.5rem; margin:0 0 .3rem; line-height:1.25; }
+  h1 img{ height:26px; vertical-align:-5px; }
+  .meta{ color:var(--muted); font-size:.8rem; margin-bottom:1.3rem; }
+  .lead{ color:var(--txt); margin:.2rem 0 1.2rem; }
+  code{ background:var(--panel); border:1px solid var(--line); padding:.06rem .36rem; border-radius:5px; font-size:.88em; }
+
+  .hero{ border:1px solid var(--blue2); background:linear-gradient(180deg,rgba(31,111,235,.10),rgba(31,111,235,.02));
+         border-left:4px solid var(--fox); border-radius:10px; padding:14px 18px; margin:14px 0 22px; color:var(--txt); }
+  .hero b{ color:var(--ink); }
+
+  .steps{ display:flex; flex-direction:column; gap:.75rem; margin:1.1rem 0 .4rem; }
+  .step{ display:flex; gap:.9rem; border:1px solid var(--line2); border-radius:11px; padding:.85rem 1.05rem; background:var(--panel); }
+  .step__n{ flex:0 0 auto; width:30px; height:30px; border-radius:50%;
+            background:rgba(245,64,9,.13); color:var(--fox); border:1px solid rgba(245,64,9,.38);
+            font-weight:700; display:flex; align-items:center; justify-content:center; font-size:.92rem; }
+  .step__b{ flex:1; min-width:0; }
+  .step__b b{ color:var(--ink); }
+  .step__b .s{ color:var(--muted); font-size:.85rem; margin-top:.2rem; }
+  .callout{ border:1px solid var(--line2); border-left:4px solid var(--blue2); background:rgba(31,111,235,.07);
+            border-radius:8px; padding:.7rem .9rem; margin:.8rem 0; font-size:.86rem; color:var(--txt); }
+  .callout.warn{ border-left-color:var(--fox); background:rgba(245,64,9,.07); }
+  .callout b{ color:var(--ink); }
+  .foot{ margin-top:2rem; padding-top:1rem; border-top:1px solid var(--line); font-size:.8rem; color:var(--muted); }
+
+  body[data-lang="en"] [data-block="cs"]{ display:none; }
+  body[data-lang="cs"] [data-block="en"]{ display:none; }
+  @media(max-width:560px){ h1{ font-size:1.3rem; } }
+  @media print{ .topbar{ position:static; } .langbar{ display:none; } a{ color:var(--ink); } }
+</style>
+</head>
+<body data-lang="en">
+<div class="topbar">
+  <div class="topbar__in">
+    <span class="topbar__title"><img src="data:image/svg+xml,%3Csvg%20version%3D%221.1%22%20id%3D%22Vrstva_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20236.3%20236.2%22%20style%3D%22enable-background%3Anew%200%200%20236.3%20236.2%3B%22%20xml%3Aspace%3D%22preserve%22%3E%20%3Cstyle%20type%3D%22text%2Fcss%22%3E%20.st0%7Bfill%3A%23E74600%3B%7D%20.st1%7Bfill%3A%23CC3000%3B%7D%20.st2%7Bfill%3A%23FF6102%3B%7D%20%3C%2Fstyle%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_3_2_%22%3E%20%3Cg%20id%3D%22XMLID_42_%22%3E%20%3Cpath%20id%3D%22XMLID_3_%22%20class%3D%22st0%22%20d%3D%22M115.3%2C120.8c7.7%2C18.5%2C33.8%2C54.7%2C38.9%2C61c3.6%2C4.5%2C79.2%2C53.4%2C82.1%2C54.5V0%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_2_2_%22%3E%20%3Cg%20id%3D%22XMLID_49_%22%3E%20%3Cpolygon%20id%3D%22XMLID_59_%22%20class%3D%22st1%22%20points%3D%22115.3%2C120.8%20115.1%2C121.2%2071.7%2C184.9%20114.4%2C236.2%20236.3%2C236.2%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_4_2_%22%3E%20%3Cg%20id%3D%22XMLID_29_%22%3E%20%3Cpath%20id%3D%22XMLID_41_%22%20class%3D%22st2%22%20d%3D%22M43.9%2C154.7C14.2%2C184.5%2C0%2C236.2%2C0%2C236.2h115.3V120.8C115.3%2C120.9%2C71.8%2C126.9%2C43.9%2C154.7z%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_2_%22%3E%20%3Cg%20id%3D%22XMLID_43_%22%3E%20%3Cpolygon%20id%3D%22XMLID_53_%22%20class%3D%22st2%22%20points%3D%22115.3%2C0%20115.3%2C120.8%20236.3%2C120.8%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E" alt="Foxentry" width="20" style="vertical-align:-4px"> Foxentry Data Cleaner · setup</span>
+    <div class="langbar">
+      <button id="b-en" onclick="document.body.setAttribute('data-lang','en')">EN</button>
+      <button id="b-cs" onclick="document.body.setAttribute('data-lang','cs')">CS</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ===================== ENGLISH ===================== -->
+<div data-block="en">
+  <h1><img src="data:image/svg+xml,%3Csvg%20version%3D%221.1%22%20id%3D%22Vrstva_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20236.3%20236.2%22%20style%3D%22enable-background%3Anew%200%200%20236.3%20236.2%3B%22%20xml%3Aspace%3D%22preserve%22%3E%20%3Cstyle%20type%3D%22text%2Fcss%22%3E%20.st0%7Bfill%3A%23E74600%3B%7D%20.st1%7Bfill%3A%23CC3000%3B%7D%20.st2%7Bfill%3A%23FF6102%3B%7D%20%3C%2Fstyle%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_3_2_%22%3E%20%3Cg%20id%3D%22XMLID_42_%22%3E%20%3Cpath%20id%3D%22XMLID_3_%22%20class%3D%22st0%22%20d%3D%22M115.3%2C120.8c7.7%2C18.5%2C33.8%2C54.7%2C38.9%2C61c3.6%2C4.5%2C79.2%2C53.4%2C82.1%2C54.5V0%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_2_2_%22%3E%20%3Cg%20id%3D%22XMLID_49_%22%3E%20%3Cpolygon%20id%3D%22XMLID_59_%22%20class%3D%22st1%22%20points%3D%22115.3%2C120.8%20115.1%2C121.2%2071.7%2C184.9%20114.4%2C236.2%20236.3%2C236.2%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_4_2_%22%3E%20%3Cg%20id%3D%22XMLID_29_%22%3E%20%3Cpath%20id%3D%22XMLID_41_%22%20class%3D%22st2%22%20d%3D%22M43.9%2C154.7C14.2%2C184.5%2C0%2C236.2%2C0%2C236.2h115.3V120.8C115.3%2C120.9%2C71.8%2C126.9%2C43.9%2C154.7z%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_2_%22%3E%20%3Cg%20id%3D%22XMLID_43_%22%3E%20%3Cpolygon%20id%3D%22XMLID_53_%22%20class%3D%22st2%22%20points%3D%22115.3%2C0%20115.3%2C120.8%20236.3%2C120.8%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E" alt="Foxentry" width="20" style="vertical-align:-4px"> Setup guide</h1>
+  <div class="meta">Getting your Foxentry API key &nbsp;·&nbsp; for the data cleaner &nbsp;·&nbsp; API: Foxentry v2.1</div>
+
+  <div class="hero">
+    <b>Before your first run</b> you need a Foxentry account and an <b>API project</b> with an API key. This tool talks to the Foxentry <b>REST API</b>, so the steps below take only a few minutes.
+  </div>
+
+  <div class="callout">💻 <b>Running it:</b> the recommended Windows build is a <b>signed single&#8209;exe</b> — no Python or pip install needed; just run <code>FoxentryDataCleaner.exe</code>. Its data (<code>config.env</code>, <code>input/</code>, <code>output/</code>, <code>logs/</code>) is created <b>next to the exe</b>, so keep it in a user&#8209;writable folder. You can verify the Authenticode signature (issuer <i>AVANTRO s.r.o.</i>), the published SHA256, and the build provenance attestation before running. Developers/auditors can still run from source with <code>START.bat</code> / <code>python run.py</code>.</div>
+
+  <div class="steps">
+    <div class="step"><div class="step__n">1</div><div class="step__b"><b>Create an account</b><div class="s">Sign up at <a href="https://app.foxentry.com/cs/registration" target="_blank" rel="noopener">app.foxentry.com</a>. Every new project includes a free 14-day trial.</div></div></div>
+    <div class="step"><div class="step__n">2</div><div class="step__b"><b>Create an API project</b><div class="s">Click the orange <b>New project</b> button, choose <b>Application&nbsp;/&nbsp;API</b> (not Web&nbsp;/&nbsp;JS — this tool uses the REST API), then <b>Continue</b>. Fill in a name and the project country and finish.</div></div></div>
+    <div class="step"><div class="step__n">3</div><div class="step__b"><b>Generate an API key</b><div class="s">Open the project → <b>Settings</b> → tab <b>API keys</b> → click the empty <b>Create API key</b> card. Name it (e.g. “Data cleaner”), optionally set an expiration or IP restriction, then click <b>Create new key</b>.</div></div></div>
+    <div class="step"><div class="step__n">4</div><div class="step__b"><b>Copy the key immediately</b><div class="s">For security Foxentry shows the full key <b>only once</b>, right after creating it — later you’ll see just part of it. Copy it now; if you lose it you have to generate a new one.</div></div></div>
+    <div class="step"><div class="step__n">5</div><div class="step__b"><b>Make sure you have credit</b><div class="s">Validation consumes credits. During the 14-day trial you can test for free; afterwards top up the tariff/credit in the project (API → Top up tariff / credit).</div></div></div>
+    <div class="step"><div class="step__n">6</div><div class="step__b"><b>Paste the key into the cleaner</b><div class="s">In the cleaner’s last step (<b>Order</b>) paste the key into the <b>API key</b> field — it’s stored locally and shown masked. Alternatively put <code>FOXENTRY_API_KEY=…</code> into <code>config.env</code>.</div></div></div>
+  </div>
+
+  <div class="callout">💡 <b>Web project vs. API project:</b> Foxentry also offers a Web&nbsp;/&nbsp;JS project for live autocomplete in website forms. This tool is different — it cleans existing files via the REST API, so always pick an <b>Application&nbsp;/&nbsp;API</b> project. Full manual: <a href="https://foxentry.com/cs/manual/typy-projektu" target="_blank" rel="noopener">Project types</a> · <a href="https://foxentry.com/cs/manual/api-vygenerovani-api-klice" target="_blank" rel="noopener">Generating an API key</a>.</div>
+  <div class="callout warn">⏳ <b>Just created the key?</b> A brand-new key can take a short moment to activate on Foxentry’s side. If the first run reports an invalid key, the cleaner automatically waits ~20&nbsp;s and retries once.</div>
+
+  <div class="foot">Need help? See the in-app <b>Manual</b> or contact <a href="https://foxentry.com/cs/kontakt" target="_blank" rel="noopener">Foxentry support</a>.</div>
+</div>
+
+<!-- ===================== ČEŠTINA ===================== -->
+<div data-block="cs">
+  <h1><img src="data:image/svg+xml,%3Csvg%20version%3D%221.1%22%20id%3D%22Vrstva_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20236.3%20236.2%22%20style%3D%22enable-background%3Anew%200%200%20236.3%20236.2%3B%22%20xml%3Aspace%3D%22preserve%22%3E%20%3Cstyle%20type%3D%22text%2Fcss%22%3E%20.st0%7Bfill%3A%23E74600%3B%7D%20.st1%7Bfill%3A%23CC3000%3B%7D%20.st2%7Bfill%3A%23FF6102%3B%7D%20%3C%2Fstyle%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_3_2_%22%3E%20%3Cg%20id%3D%22XMLID_42_%22%3E%20%3Cpath%20id%3D%22XMLID_3_%22%20class%3D%22st0%22%20d%3D%22M115.3%2C120.8c7.7%2C18.5%2C33.8%2C54.7%2C38.9%2C61c3.6%2C4.5%2C79.2%2C53.4%2C82.1%2C54.5V0%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_2_2_%22%3E%20%3Cg%20id%3D%22XMLID_49_%22%3E%20%3Cpolygon%20id%3D%22XMLID_59_%22%20class%3D%22st1%22%20points%3D%22115.3%2C120.8%20115.1%2C121.2%2071.7%2C184.9%20114.4%2C236.2%20236.3%2C236.2%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_4_2_%22%3E%20%3Cg%20id%3D%22XMLID_29_%22%3E%20%3Cpath%20id%3D%22XMLID_41_%22%20class%3D%22st2%22%20d%3D%22M43.9%2C154.7C14.2%2C184.5%2C0%2C236.2%2C0%2C236.2h115.3V120.8C115.3%2C120.9%2C71.8%2C126.9%2C43.9%2C154.7z%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_2_%22%3E%20%3Cg%20id%3D%22XMLID_43_%22%3E%20%3Cpolygon%20id%3D%22XMLID_53_%22%20class%3D%22st2%22%20points%3D%22115.3%2C0%20115.3%2C120.8%20236.3%2C120.8%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E" alt="Foxentry" width="20" style="vertical-align:-4px"> Návod na zprovoznění</h1>
+  <div class="meta">Získání API klíče Foxentry &nbsp;·&nbsp; pro čistič dat &nbsp;·&nbsp; API: Foxentry v2.1</div>
+
+  <div class="hero">
+    <b>Než spustíte první validaci</b> potřebujete účet Foxentry a <b>API projekt</b> s API klíčem. Nástroj komunikuje s <b>REST API</b> Foxentry, takže následující kroky zaberou jen pár minut.
+  </div>
+
+  <div class="callout">💻 <b>Spuštění:</b> doporučená verze pro Windows je <b>podepsaný single&#8209;exe</b> — není potřeba instalovat Python ani pip, stačí spustit <code>FoxentryDataCleaner.exe</code>. Data (<code>config.env</code>, <code>input/</code>, <code>output/</code>, <code>logs/</code>) vznikají <b>vedle exe</b>, proto ho mějte ve složce, kam smíte zapisovat. Před spuštěním lze ověřit Authenticode podpis (vydavatel <i>AVANTRO s.r.o.</i>), zveřejněný SHA256 i atestaci původu buildu. Vývojáři/auditoři mohou stále spouštět ze zdroje přes <code>START.bat</code> / <code>python run.py</code>.</div>
+
+  <div class="steps">
+    <div class="step"><div class="step__n">1</div><div class="step__b"><b>Založte si účet</b><div class="s">Zaregistrujte se na <a href="https://app.foxentry.com/cs/registration" target="_blank" rel="noopener">app.foxentry.com</a>. Ke každému novému projektu dostanete 14denní zkušební verzi zdarma.</div></div></div>
+    <div class="step"><div class="step__n">2</div><div class="step__b"><b>Vytvořte API projekt</b><div class="s">Klikněte na oranžové tlačítko <b>Nový projekt</b>, zvolte <b>Aplikace&nbsp;/&nbsp;API</b> (ne Webový formulář&nbsp;/&nbsp;JS — tento nástroj jede přes REST API) a dejte <b>Pokračovat</b>. Vyplňte název a zemi projektu a dokončete.</div></div></div>
+    <div class="step"><div class="step__n">3</div><div class="step__b"><b>Vygenerujte API klíč</b><div class="s">Otevřete projekt → <b>Nastavení</b> → záložka <b>API klíče</b> → klikněte na prázdnou kartu <b>Vytvořit API klíč</b>. Pojmenujte ho (např. „Čistič dat“), volitelně nastavte expiraci nebo omezení na IP a klikněte na <b>Vytvořit nový klíč</b>.</div></div></div>
+    <div class="step"><div class="step__n">4</div><div class="step__b"><b>Klíč si hned zkopírujte</b><div class="s">Z bezpečnostních důvodů Foxentry zobrazí celý klíč <b>jen jednou</b>, ihned po vytvoření — později uvidíte už jen jeho část. Zkopírujte si ho teď; při ztrátě musíte vygenerovat nový.</div></div></div>
+    <div class="step"><div class="step__n">5</div><div class="step__b"><b>Mějte kredit</b><div class="s">Validace spotřebovává kredit. Během 14denní zkušební verze testujete zdarma; poté dobijte tarif/kredit v projektu (API → Dobíjení tarifu / kreditu).</div></div></div>
+    <div class="step"><div class="step__n">6</div><div class="step__b"><b>Vložte klíč do čističe</b><div class="s">V posledním kroku čističe (<b>Objednávka</b>) vložte klíč do pole <b>API klíč</b> — uloží se lokálně a zobrazuje se maskovaně. Případně vložte <code>FOXENTRY_API_KEY=…</code> do souboru <code>config.env</code>.</div></div></div>
+  </div>
+
+  <div class="callout">💡 <b>Webový projekt vs. API projekt:</b> Foxentry nabízí i Webový&nbsp;/&nbsp;JS projekt pro našeptávání přímo ve formulářích webu. Tento nástroj je jiný — čistí existující soubory přes REST API, takže vždy zvolte projekt <b>Aplikace&nbsp;/&nbsp;API</b>. Celý manuál: <a href="https://foxentry.com/cs/manual/typy-projektu" target="_blank" rel="noopener">Typy projektů</a> · <a href="https://foxentry.com/cs/manual/api-vygenerovani-api-klice" target="_blank" rel="noopener">Vygenerování API klíče</a>.</div>
+  <div class="callout warn">⏳ <b>Klíč jste právě vytvořili?</b> Čerstvý klíč může chvíli trvat, než se na straně Foxentry aktivuje. Pokud první běh nahlásí neplatný klíč, čistič automaticky počká ~20&nbsp;s a jednou to zopakuje.</div>
+
+  <div class="foot">Potřebujete pomoct? Mrkněte na <b>Manuál</b> v aplikaci nebo se ozvěte <a href="https://foxentry.com/cs/kontakt" target="_blank" rel="noopener">podpoře Foxentry</a>.</div>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foxentry Data Cleaner · Log viewer</title>
+<meta name="x-auth" content="__AUTH_TOKEN__">
+<style>
+  :root{ color-scheme:dark; --bg:#0d1117; --panel:#161b22; --panel2:#11161d; --line:#21262d; --line2:#30363d;
+         --ink:#e6edf3; --txt:#c9d1d9; --muted:#8b949e; --blue:#58a6ff; --blue2:#1f6feb; --fox:#f54009;
+         --green:#3fb950; --orange:#f0883e; --red:#f85149; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+        font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; line-height:1.55; font-size:13.5px; }
+  a{ color:var(--blue); }
+  .topbar{ position:sticky; top:0; z-index:20; background:rgba(13,17,23,.92); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+  .topbar__in{ max-width:1100px; margin:0 auto; padding:.55rem 1.1rem; display:flex; align-items:center; gap:.6rem; }
+  .topbar__title{ font-size:.82rem; color:var(--muted); font-weight:700; display:flex; align-items:center; gap:.5rem; }
+  .topbar__title img{ height:18px; vertical-align:-4px; }
+  .langbar{ margin-left:auto; display:flex; gap:.4rem; }
+  .langbar button{ background:var(--panel); color:var(--muted); border:1px solid var(--line2); border-radius:7px;
+                   padding:.26rem .8rem; cursor:pointer; font:inherit; font-size:.78rem; }
+  .langbar button:hover{ color:var(--ink); }
+  body[data-lang="en"] #b-en, body[data-lang="cs"] #b-cs{ color:#fff; border-color:var(--blue2); background:#16263f; }
+
+  .wrap{ max-width:1100px; margin:0 auto; padding:1.2rem 1.1rem 4rem; }
+  h1{ font-size:1.25rem; margin:0 0 .8rem; display:flex; align-items:center; gap:.5rem; }
+  h1 img{ height:22px; }
+
+  .controls{ display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin-bottom:.8rem; }
+  select,input[type="search"]{ background:var(--panel); color:var(--ink); border:1px solid var(--line2);
+    border-radius:7px; padding:.34rem .55rem; font:inherit; font-size:.8rem; }
+  input[type="search"]{ min-width:220px; flex:1; }
+  .seg{ display:flex; border:1px solid var(--line2); border-radius:7px; overflow:hidden; }
+  .seg button{ background:var(--panel); color:var(--muted); border:0; border-right:1px solid var(--line2);
+    padding:.34rem .7rem; cursor:pointer; font:inherit; font-size:.78rem; }
+  .seg button:last-child{ border-right:0; }
+  .seg button.on{ background:#16263f; color:#fff; }
+  .btn{ background:var(--panel); color:var(--txt); border:1px solid var(--line2); border-radius:7px;
+        padding:.34rem .7rem; cursor:pointer; font:inherit; font-size:.78rem; }
+  .btn:hover{ color:var(--ink); }
+
+  .summary{ display:flex; flex-wrap:wrap; gap:.5rem; margin:.2rem 0 1rem; font-size:.78rem; }
+  .chip{ border:1px solid var(--line2); border-radius:20px; padding:.2rem .7rem; color:var(--muted); background:var(--panel); }
+  .chip b{ color:var(--ink); }
+  .chip.g b{ color:var(--green); } .chip.o b{ color:var(--orange); } .chip.r b{ color:var(--red); }
+
+  .drop{ border:2px dashed var(--line2); border-radius:12px; padding:2rem; text-align:center; color:var(--muted);
+         margin:1rem 0; cursor:pointer; }
+  .drop.hi{ border-color:var(--blue); color:var(--ink); }
+
+  .rec{ border:1px solid var(--line); border-radius:9px; margin:.4rem 0; background:var(--panel); overflow:hidden; }
+  .rec__h{ display:flex; align-items:center; gap:.7rem; padding:.5rem .8rem; cursor:pointer; }
+  .rec__h:hover{ background:var(--panel2); }
+  .rec__i{ color:var(--muted); font-size:.72rem; min-width:2.4rem; }
+  .rec__t{ color:var(--muted); font-size:.76rem; }
+  .badge{ font-weight:700; font-size:.72rem; padding:.1rem .5rem; border-radius:6px; border:1px solid; }
+  .badge.ok{ color:var(--green); border-color:rgba(63,185,80,.5); background:rgba(63,185,80,.1); }
+  .badge.warn{ color:var(--orange); border-color:rgba(240,136,62,.5); background:rgba(240,136,62,.1); }
+  .badge.err{ color:var(--red); border-color:rgba(248,81,73,.5); background:rgba(248,81,73,.1); }
+  .badge.info{ color:var(--blue); border-color:rgba(88,166,255,.5); background:rgba(88,166,255,.1); }
+  .badge.muted{ color:var(--muted); border-color:var(--line2); }
+  .ep{ font-weight:700; color:var(--ink); }
+  .cid{ color:var(--muted); font-size:.74rem; }
+  .ms{ margin-left:auto; color:var(--muted); font-size:.74rem; white-space:nowrap; }
+  .chev{ color:var(--muted); transition:transform .15s; }
+  .rec.open .chev{ transform:rotate(90deg); }
+
+  .rec__b{ display:none; border-top:1px solid var(--line); padding:.3rem .8rem .8rem; }
+  .rec.open .rec__b{ display:block; }
+  .sec{ margin-top:.7rem; }
+  .sec__h{ display:flex; align-items:center; gap:.5rem; font-size:.74rem; text-transform:uppercase; letter-spacing:.04em;
+           color:var(--muted); margin:.2rem 0 .35rem; }
+  .sec__h .copy{ margin-left:auto; }
+  .copy{ background:transparent; border:1px solid var(--line2); color:var(--muted); border-radius:6px;
+         padding:.1rem .5rem; font:inherit; font-size:.7rem; cursor:pointer; }
+  .copy:hover{ color:var(--ink); }
+  pre{ background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.7rem .8rem; margin:0;
+       overflow-x:auto; font-size:.78rem; white-space:pre; }
+  .meta-line{ color:var(--muted); font-size:.78rem; margin-bottom:.35rem; }
+  .meta-line b{ color:var(--ink); }
+  .empty{ color:var(--muted); padding:2rem 0; text-align:center; }
+  .noinfo{ max-width:560px; margin:2.5rem auto; text-align:center; }
+  .noinfo__t{ font-size:1.05rem; font-weight:700; color:var(--fg); margin-bottom:.5rem; }
+  .noinfo__d{ color:var(--muted); line-height:1.6; font-size:.92rem; }
+
+  .j-key{ color:#79c0ff; } .j-str{ color:#a5d6ff; } .j-num{ color:#f0883e; }
+  .j-bool{ color:#d2a8ff; } .j-null{ color:#8b949e; }
+
+  body[data-lang="en"] [data-block="cs"]{ display:none; }
+  body[data-lang="cs"] [data-block="en"]{ display:none; }
+  @media print{ .topbar{ position:static; } .langbar,.controls{ display:none; } }
+</style>
+<script>(function(){var m=document.querySelector("meta[name=x-auth]");var A=m?m.content:"";var f=window.fetch.bind(window);window.fetch=function(u,o){o=o||{};if(typeof u==="string"&&u.indexOf("/api/")===0){o.headers=Object.assign({},o.headers||{},{"X-Auth":A});}return f(u,o);};})();</script>
+</head>
+<body data-lang="en">
+<div class="topbar">
+  <div class="topbar__in">
+    <span class="topbar__title"><img src="data:image/svg+xml,%3Csvg%20version%3D%221.1%22%20id%3D%22Vrstva_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20236.3%20236.2%22%20style%3D%22enable-background%3Anew%200%200%20236.3%20236.2%3B%22%20xml%3Aspace%3D%22preserve%22%3E%20%3Cstyle%20type%3D%22text%2Fcss%22%3E%20.st0%7Bfill%3A%23E74600%3B%7D%20.st1%7Bfill%3A%23CC3000%3B%7D%20.st2%7Bfill%3A%23FF6102%3B%7D%20%3C%2Fstyle%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_3_2_%22%3E%20%3Cg%20id%3D%22XMLID_42_%22%3E%20%3Cpath%20id%3D%22XMLID_3_%22%20class%3D%22st0%22%20d%3D%22M115.3%2C120.8c7.7%2C18.5%2C33.8%2C54.7%2C38.9%2C61c3.6%2C4.5%2C79.2%2C53.4%2C82.1%2C54.5V0%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_2_2_%22%3E%20%3Cg%20id%3D%22XMLID_49_%22%3E%20%3Cpolygon%20id%3D%22XMLID_59_%22%20class%3D%22st1%22%20points%3D%22115.3%2C120.8%20115.1%2C121.2%2071.7%2C184.9%20114.4%2C236.2%20236.3%2C236.2%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_4_2_%22%3E%20%3Cg%20id%3D%22XMLID_29_%22%3E%20%3Cpath%20id%3D%22XMLID_41_%22%20class%3D%22st2%22%20d%3D%22M43.9%2C154.7C14.2%2C184.5%2C0%2C236.2%2C0%2C236.2h115.3V120.8C115.3%2C120.9%2C71.8%2C126.9%2C43.9%2C154.7z%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_2_%22%3E%20%3Cg%20id%3D%22XMLID_43_%22%3E%20%3Cpolygon%20id%3D%22XMLID_53_%22%20class%3D%22st2%22%20points%3D%22115.3%2C0%20115.3%2C120.8%20236.3%2C120.8%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E" alt="Foxentry" width="18" style="vertical-align:-4px"> Foxentry Data Cleaner · logs</span>
+    <div class="langbar">
+      <button id="b-en" onclick="setLang('en')">EN</button>
+      <button id="b-cs" onclick="setLang('cs')">CS</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <h1><img src="data:image/svg+xml,%3Csvg%20version%3D%221.1%22%20id%3D%22Vrstva_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20236.3%20236.2%22%20style%3D%22enable-background%3Anew%200%200%20236.3%20236.2%3B%22%20xml%3Aspace%3D%22preserve%22%3E%20%3Cstyle%20type%3D%22text%2Fcss%22%3E%20.st0%7Bfill%3A%23E74600%3B%7D%20.st1%7Bfill%3A%23CC3000%3B%7D%20.st2%7Bfill%3A%23FF6102%3B%7D%20%3C%2Fstyle%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_3_2_%22%3E%20%3Cg%20id%3D%22XMLID_42_%22%3E%20%3Cpath%20id%3D%22XMLID_3_%22%20class%3D%22st0%22%20d%3D%22M115.3%2C120.8c7.7%2C18.5%2C33.8%2C54.7%2C38.9%2C61c3.6%2C4.5%2C79.2%2C53.4%2C82.1%2C54.5V0%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_2_2_%22%3E%20%3Cg%20id%3D%22XMLID_49_%22%3E%20%3Cpolygon%20id%3D%22XMLID_59_%22%20class%3D%22st1%22%20points%3D%22115.3%2C120.8%20115.1%2C121.2%2071.7%2C184.9%20114.4%2C236.2%20236.3%2C236.2%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_4_2_%22%3E%20%3Cg%20id%3D%22XMLID_29_%22%3E%20%3Cpath%20id%3D%22XMLID_41_%22%20class%3D%22st2%22%20d%3D%22M43.9%2C154.7C14.2%2C184.5%2C0%2C236.2%2C0%2C236.2h115.3V120.8C115.3%2C120.9%2C71.8%2C126.9%2C43.9%2C154.7z%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_2_%22%3E%20%3Cg%20id%3D%22XMLID_43_%22%3E%20%3Cpolygon%20id%3D%22XMLID_53_%22%20class%3D%22st2%22%20points%3D%22115.3%2C0%20115.3%2C120.8%20236.3%2C120.8%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E" alt="" width="22" style="vertical-align:-4px"> <span data-i="title">Request log viewer</span></h1>
+
+  <div class="controls">
+    <select id="fileSel" onchange="onPickFile()" title="log file"></select>
+    <input type="search" id="q" data-i-ph="search" placeholder="Search endpoint, customId, value…" oninput="render()">
+    <div class="seg" id="statusSeg">
+      <button data-f="all" class="on" onclick="setFilter('all')" data-i="f_all">All</button>
+      <button data-f="ok" onclick="setFilter('ok')">2xx</button>
+      <button data-f="warn" onclick="setFilter('warn')">4xx</button>
+      <button data-f="err" onclick="setFilter('err')">5xx</button>
+      <button data-f="bad" onclick="setFilter('bad')" data-i="f_err">Errors</button>
+    </div>
+    <select id="epSel" onchange="render()"></select>
+    <button class="btn" onclick="toggleAll(true)" data-i="exp">Expand all</button>
+    <button class="btn" onclick="toggleAll(false)" data-i="col">Collapse all</button>
+    <button class="btn" onclick="clearLogs()" data-i="clear" style="margin-left:auto">Clear logs</button>
+  </div>
+
+  <div class="summary" id="summary"></div>
+  <div id="dropWrap"></div>
+  <div id="list"></div>
+</div>
+
+<script>
+const T={
+  en:{ title:"Request log viewer", search:"Search endpoint, customId, value…", f_all:"All", f_err:"Errors",
+       exp:"Expand all", col:"Collapse all", clear:"Clear logs", clear_confirm:"Delete all request logs from disk?", cleared:"Logs cleared.", req:"Request", resp:"Response", raw:"Raw / error",
+       headers:"Headers", body:"Body", total:"requests", avg:"avg", none:"No log loaded.",
+       nomatch:"No requests match the filter.", drop:"Drop a requests-*.jsonl file here or click to choose",
+       nolog_title:"No log for the last run",
+       nolog_desc:"Request logging was turned off for the last run, so nothing was saved. To capture it, run the validation again and tick \u201CLog requests for this run\u201D on the Order step.",
+       copy:"Copy", copied:"Copied" },
+  cs:{ title:"Prohlížeč request logů", search:"Hledat endpoint, customId, hodnotu…", f_all:"Vše", f_err:"Chyby",
+       exp:"Rozbalit vše", col:"Sbalit vše", clear:"Smazat logy", clear_confirm:"Smazat všechny request logy z disku?", cleared:"Logy smazány.", req:"Požadavek", resp:"Odpověď", raw:"Raw / chyba",
+       headers:"Hlavičky", body:"Tělo", total:"požadavků", avg:"prům.", none:"Není načten žádný log.",
+       nomatch:"Žádný požadavek neodpovídá filtru.", drop:"Sem přetáhněte soubor requests-*.jsonl nebo klikněte pro výběr",
+       nolog_title:"Pro poslední běh není log",
+       nolog_desc:"Logování požadavků bylo pro poslední běh vypnuté, takže se nic neuložilo. Pokud ho chcete, spusťte validaci znovu a na kroku Order zaškrtněte \u201ELog requests for this run\u201C.",
+       copy:"Kopírovat", copied:"Zkopírováno" }
+};
+let lang="en", records=[], filter="all";
+
+function tr(k){ return (T[lang]||T.en)[k]||k; }
+function setLang(l){
+  lang=l; document.body.setAttribute("data-lang",l);
+  document.querySelectorAll("[data-i]").forEach(e=>e.textContent=tr(e.getAttribute("data-i")));
+  document.querySelectorAll("[data-i-ph]").forEach(e=>e.placeholder=tr(e.getAttribute("data-i-ph")));
+  render();
+}
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function hlJSON(obj){
+  let j; try{ j=JSON.stringify(obj,null,2); }catch(e){ j=String(obj); }
+  if(j===undefined) j="";
+  j=j.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  return j.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false)\b|\bnull\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,function(m){
+    let cls="num";
+    if(/^"/.test(m)) cls=/:$/.test(m)?"key":"str";
+    else if(/true|false/.test(m)) cls="bool";
+    else if(/null/.test(m)) cls="null";
+    return '<span class="j-'+cls+'">'+m+'</span>';
+  });
+}
+function statusClass(c){
+  c=+c||0;
+  if(c>=200&&c<300) return "ok";
+  if(c>=300&&c<400) return "info";
+  if(c>=400&&c<500) return "warn";
+  if(c>=500) return "err";
+  return "muted";
+}
+function shortTime(ts){ const m=/T(\d{2}:\d{2}:\d{2})/.exec(ts||""); return m?m[1]:(ts||""); }
+
+async function init(){
+  let list=null;
+  try{ const r=await fetch("/api/logs"); if(r.ok){ list=(await r.json()).logs||[]; } }catch(e){}
+  const sel=document.getElementById("fileSel");
+  const drop=document.getElementById("dropWrap");
+  if(list===null){
+    sel.style.display="none";
+    drop.innerHTML=`<div class="drop" id="drop">${esc(tr("drop"))}</div><input type="file" id="fileIn" accept=".jsonl,.txt" style="display:none">`;
+    const dz=document.getElementById("drop"), fi=document.getElementById("fileIn");
+    dz.onclick=()=>fi.click();
+    fi.onchange=()=>{ if(fi.files[0]) fi.files[0].text().then(parseText); };
+    ["dragover","dragenter"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add("hi");}));
+    ["dragleave","drop"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove("hi");}));
+    dz.addEventListener("drop",e=>{ const f=e.dataTransfer.files[0]; if(f) f.text().then(parseText); });
+  }else if(list.length===0){
+    sel.style.display="none";
+    document.getElementById("summary").innerHTML="";
+    document.getElementById("list").innerHTML=
+      `<div class="noinfo"><div class="noinfo__t">${esc(tr("nolog_title"))}</div>`+
+      `<div class="noinfo__d">${esc(tr("nolog_desc"))}</div></div>`;
+  }else{
+    sel.innerHTML=list.map(f=>{
+      const d=new Date(f.modified*1000), kb=(f.size/1024).toFixed(0);
+      return `<option value="${esc(f.name)}">${esc(f.name)} · ${kb} kB</option>`;
+    }).join("");
+    loadFile(list[0].name);
+  }
+}
+async function loadFile(name){
+  try{ const r=await fetch("/api/logfile?name="+encodeURIComponent(name)); parseText(await r.text()); }
+  catch(e){ records=[]; render(); }
+}
+function onPickFile(){ loadFile(document.getElementById("fileSel").value); }
+async function clearLogs(){
+  if(!confirm(tr("clear_confirm"))) return;
+  try{ await fetch("/api/logs/clear",{method:"POST"}); }catch(e){}
+  records=[]; render(); init();
+}
+function parseText(text){
+  records=[];
+  text.split(/\r?\n/).forEach(line=>{ line=line.trim(); if(!line) return;
+    try{ records.push(JSON.parse(line)); }catch(e){} });
+  // endpoint filtr
+  const eps=[...new Set(records.map(r=>r.endpoint).filter(Boolean))].sort();
+  const epSel=document.getElementById("epSel");
+  epSel.innerHTML=`<option value="">${lang==="cs"?"všechny endpointy":"all endpoints"}</option>`+
+    eps.map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join("");
+  render();
+}
+function setFilter(f){
+  filter=f;
+  document.querySelectorAll("#statusSeg button").forEach(b=>b.classList.toggle("on",b.getAttribute("data-f")===f));
+  render();
+}
+function passFilter(r){
+  const c=+r.status||0;
+  if(filter==="ok"&&!(c>=200&&c<300)) return false;
+  if(filter==="warn"&&!(c>=400&&c<500)) return false;
+  if(filter==="err"&&!(c>=500)) return false;
+  if(filter==="bad"&&(c>=200&&c<300)) return false;
+  const ep=document.getElementById("epSel").value;
+  if(ep&&r.endpoint!==ep) return false;
+  const q=document.getElementById("q").value.trim().toLowerCase();
+  if(q){
+    const hay=(r.endpoint||"")+" "+JSON.stringify(r.request||"")+" "+JSON.stringify(r.response||"")+" "+(r.response_raw||"");
+    if(!hay.toLowerCase().includes(q)) return false;
+  }
+  return true;
+}
+function render(){
+  const list=document.getElementById("list"), sum=document.getElementById("summary");
+  if(!records.length){ sum.innerHTML=""; list.innerHTML=`<div class="empty">${esc(tr("none"))}</div>`; return; }
+  let n2=0,n4=0,n5=0,msSum=0;
+  records.forEach(r=>{ const c=+r.status||0; if(c>=200&&c<300)n2++; else if(c>=400&&c<500)n4++; else if(c>=500)n5++; msSum+=(+r.ms||0); });
+  sum.innerHTML=`<span class="chip"><b>${records.length}</b> ${esc(tr("total"))}</span>`+
+    `<span class="chip g"><b>${n2}</b> 2xx</span>`+
+    (n4?`<span class="chip o"><b>${n4}</b> 4xx</span>`:"")+
+    (n5?`<span class="chip r"><b>${n5}</b> 5xx</span>`:"")+
+    `<span class="chip">${esc(tr("avg"))} <b>${(msSum/records.length).toFixed(0)} ms</b></span>`;
+
+  const rows=records.map((r,idx)=>({r,idx})).filter(o=>passFilter(o.r));
+  if(!rows.length){ list.innerHTML=`<div class="empty">${esc(tr("nomatch"))}</div>`; return; }
+  list.innerHTML=rows.map(o=>{
+    const r=o.r, cls=statusClass(r.status), ep=(r.endpoint||"").replace(/^\//,"");
+    const cid=(r.request&&r.request.request&&r.request.request.customId)||"";
+    return `<div class="rec" data-idx="${o.idx}">
+      <div class="rec__h" onclick="toggleRec(this)">
+        <span class="chev">▶</span>
+        <span class="rec__i">#${o.idx+1}</span>
+        <span class="rec__t">${esc(shortTime(r.ts))}</span>
+        <span class="badge ${cls}">${esc(r.status==null?"—":r.status)}</span>
+        <span class="ep">${esc(ep)}</span>
+        ${cid?`<span class="cid">${esc(cid)}</span>`:""}
+        <span class="ms">${r.ms!=null?esc((+r.ms).toFixed(0))+" ms":""}</span>
+      </div>
+      <div class="rec__b"></div>
+    </div>`;
+  }).join("");
+}
+function block(title,obj,asText){
+  const id="c"+Math.random().toString(36).slice(2,8);
+  const content = asText ? esc(typeof obj==="string"?obj:JSON.stringify(obj)) : hlJSON(obj);
+  window.__cp=window.__cp||{}; window.__cp[id]= asText ? (typeof obj==="string"?obj:JSON.stringify(obj,null,2)) : JSON.stringify(obj,null,2);
+  return `<div class="sec"><div class="sec__h">${esc(title)}<button class="copy" onclick="copyBlk('${id}',this)">${esc(tr("copy"))}</button></div><pre>${content}</pre></div>`;
+}
+function buildDetail(r){
+  let h="";
+  const ep=(r.endpoint||"");
+  h+=`<div class="sec"><div class="sec__h">${esc(tr("req"))}</div>`+
+     `<div class="meta-line"><b>POST</b> ${esc("https://api.foxentry.com"+ep)}</div></div>`;
+  if(r.request_headers) h+=block(tr("req")+" · "+tr("headers"), r.request_headers);
+  if(r.request!=null) h+=block(tr("req")+" · "+tr("body"), r.request);
+  if(r.response_headers) h+=block(tr("resp")+" · "+tr("headers"), r.response_headers);
+  if(r.response!=null) h+=block(tr("resp")+" · "+tr("body"), r.response);
+  const raw = r.error||r.response_raw;
+  if(raw){ let parsed=null; try{ parsed=JSON.parse(raw); }catch(e){}
+    h+= parsed ? block(tr("raw"), parsed) : block(tr("raw"), raw, true); }
+  return h;
+}
+function toggleRec(el){
+  const rec=el.parentElement, body=rec.querySelector(".rec__b");
+  const open=rec.classList.toggle("open");
+  if(open && !body.dataset.built){ body.innerHTML=buildDetail(records[+rec.dataset.idx]); body.dataset.built="1"; }
+}
+function toggleAll(open){
+  document.querySelectorAll(".rec").forEach(rec=>{
+    const body=rec.querySelector(".rec__b");
+    if(open){ rec.classList.add("open"); if(!body.dataset.built){ body.innerHTML=buildDetail(records[+rec.dataset.idx]); body.dataset.built="1"; } }
+    else rec.classList.remove("open");
+  });
+}
+function copyBlk(id,btn){
+  const t=(window.__cp||{})[id]||"";
+  navigator.clipboard.writeText(t).then(()=>{ const o=btn.textContent; btn.textContent=tr("copied"); setTimeout(()=>btn.textContent=o,1200); }).catch(()=>{});
+}
+init();
+</script>
+</body>
+</html>

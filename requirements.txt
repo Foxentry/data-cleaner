@@ -1,0 +1,9 @@
+# The app runs COMPLETELY WITHOUT these dependencies (it then processes CSV only).
+# This single library adds support for reading/writing .xlsx (Excel) files.
+#
+# Install:  pip install -r requirements.txt
+#
+# Pinned version. The package is already bundled in vendor/, so installing via pip is not required.
+# For supply-chain verification (e.g. banks), use the hashed pins in requirements-locked.txt:
+#   pip install --require-hashes -r requirements-locked.txt
+openpyxl==3.1.5

@@ -1,0 +1,137 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:4e56b8ca-a7a3-43cb-ada3-795a30c15b74",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-06-19T00:00:00Z",
+    "tools": [
+      {
+        "vendor": "AVANTRO s.r.o.",
+        "name": "manual",
+        "version": "1.0.0"
+      }
+    ],
+    "component": {
+      "bom-ref": "foxentry-data-cleaner@1.0.0",
+      "type": "application",
+      "name": "foxentry-data-cleaner",
+      "version": "1.0.0",
+      "supplier": {
+        "name": "AVANTRO s.r.o.",
+        "url": [
+          "https://foxentry.com"
+        ]
+      },
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "description": "Local desktop tool for bulk validation/correction of contact data via the Foxentry API.",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/Foxentry/data-cleaner"
+        },
+        {
+          "type": "website",
+          "url": "https://foxentry.com"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "pkg:pypi/openpyxl@3.1.5",
+      "type": "library",
+      "name": "openpyxl",
+      "version": "3.1.5",
+      "purl": "pkg:pypi/openpyxl@3.1.5",
+      "description": "A Python library to read/write Excel 2010 xlsx/xlsm files (vendored).",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2"
+        }
+      ],
+      "properties": [
+        {
+          "name": "artifact",
+          "value": "openpyxl-3.1.5-py2.py3-none-any.whl"
+        },
+        {
+          "name": "bundled",
+          "value": "vendor/openpyxl/"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:pypi/et_xmlfile@2.0.0",
+      "type": "library",
+      "name": "et_xmlfile",
+      "version": "2.0.0",
+      "purl": "pkg:pypi/et_xmlfile@2.0.0",
+      "description": "A low-memory library for creating large XML files (vendored).",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa"
+        }
+      ],
+      "properties": [
+        {
+          "name": "artifact",
+          "value": "et_xmlfile-2.0.0-py3-none-any.whl"
+        },
+        {
+          "name": "bundled",
+          "value": "vendor/et_xmlfile/"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:generic/mulish@3.603",
+      "type": "library",
+      "name": "mulish",
+      "version": "3.603",
+      "purl": "pkg:generic/mulish@3.603",
+      "description": "Mulish font (woff2), self-hosted UI/report font.",
+      "licenses": [
+        {
+          "license": {
+            "id": "OFL-1.1"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "bundled",
+          "value": "foxentry/assets/mulish.woff2"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "67447c5614eb0efb6ba05c3ada2f94ce71f39907922cf44ed9ee8cd676f55ba6"
+        }
+      ]
+    }
+  ]
+}
