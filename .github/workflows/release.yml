@@ -27,7 +27,7 @@ jobs:
 
       - name: Sign (Azure Trusted Signing)
         if: env.SIGN_ENABLED == 'true'
-        uses: azure/trusted-signing-action@v0.5.9
+        uses: azure/trusted-signing-action@v2.0.0
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
