@@ -37,4 +37,4 @@ account.
 The tool's security design (loopback-only server with a Host check and a per-session
 token, request logging off by default with retention/manual purge, a single runtime
 network destination, a self-hosted font, and TLS certificate verification) is described
-in `docs/documentation.html`. Build integrity can be verified with `compliance/SHA256SUMS.txt`.
+in `docs/documentation.html`. Release binaries are published with a per-file SHA-256 checksum (`.sha256`) and a Sigstore build-provenance attestation (verify with `gh attestation verify`).

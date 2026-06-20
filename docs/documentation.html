@@ -114,11 +114,11 @@
   <ul>
     <li><b>Read the source</b> — plain, commented Python under <code>foxentry/</code>; no obfuscation, no binaries.</li>
     <li><b>Inspect egress</b> — behind a proxy or with tcpdump, confirm the only host is <code>api.foxentry.com</code>.</li>
-    <li><b>Verify integrity</b> — <code>sha256sum -c compliance/SHA256SUMS.txt</code> (or <code>Get-FileHash</code> on Windows).</li>
+    <li><b>Verify integrity</b> — each release binary ships with a <code>.sha256</code> checksum and a Sigstore build-provenance attestation (<code>gh attestation verify &lt;file&gt; -R Foxentry/data-cleaner</code>).</li>
   </ul>
 
   <h2>Verify it yourself</h2>
-  <p>Run the tool behind an outbound firewall that allows only <code>api.foxentry.com</code> (and, if you use the optional Excel install, temporarily <code>pypi.org</code> + <code>files.pythonhosted.org</code>). This confirms that no other data leaves the machine. The source is readable and auditable, and integrity can be verified via <code>compliance/SHA256SUMS.txt</code>.</p>
+  <p>Run the tool behind an outbound firewall that allows only <code>api.foxentry.com</code> (and, if you use the optional Excel install, temporarily <code>pypi.org</code> + <code>files.pythonhosted.org</code>). This confirms that no other data leaves the machine. The source is readable and auditable; release binaries carry a <code>.sha256</code> checksum and a Sigstore build-provenance attestation.</p>
   <p><b>Air-gapped deployments.</b> The optional &ldquo;Install Excel&rdquo; button is only a fallback &mdash; <code>openpyxl</code> is already bundled in <code>vendor/</code>. Set <code>ALLOW_PIP_INSTALL=off</code> in <code>config.env</code> to disable that button entirely (it then returns <code>disabled</code> without calling pip), leaving runtime egress strictly <code>api.foxentry.com</code>.</p>
 
   <h2>Vendor security questionnaire</h2>
@@ -288,11 +288,11 @@
   <ul>
     <li><b>Čtěte zdroj</b> — prostý komentovaný Python ve <code>foxentry/</code>; žádná obfuskace, žádné binárky.</li>
     <li><b>Sledujte egress</b> — za proxy nebo přes tcpdump ověřte, že jediný cíl je <code>api.foxentry.com</code>.</li>
-    <li><b>Ověřte integritu</b> — <code>sha256sum -c compliance/SHA256SUMS.txt</code> (na Windows <code>Get-FileHash</code>).</li>
+    <li><b>Ověřte integritu</b> — každá vydaná binárka má <code>.sha256</code> kontrolní součet a Sigstore atestaci původu (<code>gh attestation verify &lt;soubor&gt; -R Foxentry/data-cleaner</code>).</li>
   </ul>
 
   <h2>Ověřte si to sami</h2>
-  <p>Spusťte nástroj s odchozím firewallem, který povolí pouze <code>api.foxentry.com</code> (a při použití volitelné instalace Excelu dočasně <code>pypi.org</code> + <code>files.pythonhosted.org</code>). Ověříte tak, že žádná jiná data počítač neopouštějí. Zdrojový kód je čitelný a auditovatelný a integritu lze ověřit přes <code>compliance/SHA256SUMS.txt</code>.</p>
+  <p>Spusťte nástroj s odchozím firewallem, který povolí pouze <code>api.foxentry.com</code> (a při použití volitelné instalace Excelu dočasně <code>pypi.org</code> + <code>files.pythonhosted.org</code>). Ověříte tak, že žádná jiná data počítač neopouštějí. Zdrojový kód je čitelný a auditovatelný; vydané binárky mají <code>.sha256</code> kontrolní součet a Sigstore atestaci původu.</p>
   <p><b>Izolované (air-gapped) instalace.</b> Tlačítko „Nainstalovat Excel" je jen záloha — <code>openpyxl</code> je už přibalený ve <code>vendor/</code>. Nastavením <code>ALLOW_PIP_INSTALL=off</code> v <code>config.env</code> ho úplně vypnete (vrátí <code>disabled</code> bez volání pip) a runtime egress je pak výhradně <code>api.foxentry.com</code>.</p>
 
   <h2>Dodavatelský bezpečnostní dotazník</h2>
