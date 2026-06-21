@@ -5,15 +5,18 @@ on:
     tags: ["v*"]
   workflow_dispatch: {}   # allow a manual build without tagging
 
+# Minimal default token; jobs elevate only what they need.
 permissions:
-  contents: write       # create the GitHub Release
-  id-token: write       # OIDC for provenance attestation
-  attestations: write   # write the attestation
+  contents: read
 
 jobs:
   # ───────────────────────────── Windows ─────────────────────────────
   build-windows:
     runs-on: windows-latest
+    permissions:
+      contents: write       # create the GitHub Release
+      id-token: write       # OIDC for provenance attestation
+      attestations: write   # write the attestation
     env:
       SIGN_ENABLED: ${{ secrets.AZURE_TENANT_ID != '' }}
     steps:
@@ -70,6 +73,10 @@ jobs:
   # ───────────────────────────── macOS ─────────────────────────────
   build-macos:
     runs-on: macos-latest
+    permissions:
+      contents: write       # create the GitHub Release
+      id-token: write       # OIDC for provenance attestation
+      attestations: write   # write the attestation
     env:
       SIGN_ENABLED: ${{ secrets.APPLE_DEVELOPER_ID != '' }}
     steps:
@@ -83,7 +90,7 @@ jobs:
       - name: Rename
         run: mv dist/FoxentryDataCleaner dist/FoxentryDataCleaner-macos && chmod +x dist/FoxentryDataCleaner-macos
 
-      # Code signing + notarization. Skipped until Apple secrets are set.
+      # Code signing + notarization with an Apple Developer ID (runs when the Apple secrets are present).
       - name: Sign & notarize (Apple Developer ID)
         if: env.SIGN_ENABLED == 'true'
         env:
@@ -126,6 +133,10 @@ jobs:
   # ───────────────────────────── Linux ─────────────────────────────
   build-linux:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write       # create the GitHub Release
+      id-token: write       # OIDC for provenance attestation
+      attestations: write   # write the attestation
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
