@@ -4,8 +4,8 @@
 # Bump the four-part numbers and the *Version strings together when releasing.
 VSVersionInfo(
     ffi=FixedFileInfo(
-        filevers=(1, 0, 0, 0),
-        prodvers=(1, 0, 0, 0),
+        filevers=(1, 0, 1, 0),
+        prodvers=(1, 0, 1, 0),
         mask=0x3F,
         flags=0x0,
         OS=0x40004,        # VOS_NT_WINDOWS32
@@ -18,12 +18,12 @@ VSVersionInfo(
             StringTable("040904B0", [   # en-US, Unicode
                 StringStruct("CompanyName", "AVANTRO s.r.o."),
                 StringStruct("FileDescription", "Foxentry Data Cleaner"),
-                StringStruct("FileVersion", "1.0.0.0"),
+                StringStruct("FileVersion", "1.0.1.0"),
                 StringStruct("InternalName", "FoxentryDataCleaner"),
                 StringStruct("LegalCopyright", "(c) 2026 AVANTRO s.r.o. Apache-2.0."),
                 StringStruct("OriginalFilename", "FoxentryDataCleaner.exe"),
                 StringStruct("ProductName", "Foxentry Data Cleaner"),
-                StringStruct("ProductVersion", "1.0.0.0"),
+                StringStruct("ProductVersion", "1.0.1.0"),
             ]),
         ]),
         VarFileInfo([VarStruct("Translation", [0x0409, 0x04B0])]),
