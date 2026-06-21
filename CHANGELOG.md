@@ -5,23 +5,41 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-### Changed
-- Relicensed from the custom source-available license to Apache License 2.0.
-- Added NOTICE and an explicit trademark/brand-asset carve-out.
-- Added SPDX license headers to source files.
+## \[Unreleased]
 
-## [1.0.0] - 2026-06-19
+## \[1.0.1] - 2026-06-21
 
 ### Added
-- Initial release: local CSV/XLSX validation and correction via the Foxentry API.
-- Single-page wizard (file → columns → settings → order) with EN/CS localization.
-- Content-driven column classifier and per-column service/field suggestions.
-- HTML report with per-result breakdown and enrichment summary.
+
+* Signed Windows release: `.exe` is Authenticode-signed via Azure Trusted Signing (with RFC 3161 timestamp).
+* Release integrity now ships with each binary as a per-file SHA-256 checksum plus a Sigstore build-provenance attestation.
+
+### Changed
+
+* Relicensed from the custom source-available license to Apache License 2.0.
+* Added NOTICE and an explicit trademark/brand-asset carve-out.
+* Added SPDX license headers to source files.
+* Cross-platform builds (Windows / macOS / Linux) published from CI on tagged releases.
+* Workflow tokens scoped to least privilege (read by default; write per job).
+
+### Fixed
+
+* Documentation no longer references a whole-repository checksum manifest; integrity is verified against release artifacts.
+
+## \[1.0.0] - 2026-06-19
+
+### Added
+
+* Initial release: local CSV/XLSX validation and correction via the Foxentry API.
+* Single-page wizard (file → columns → settings → order) with EN/CS localization.
+* Content-driven column classifier and per-column service/field suggestions.
+* HTML report with per-result breakdown and enrichment summary.
 
 ### Security
-- Loopback-only server (`127.0.0.1`) with a Host header check and a per-session token.
-- Request logging is off by default; configurable retention and manual purge.
-- Self-hosted font; a single runtime network destination (`api.foxentry.com`).
-- TLS with certificate verification; the API key is stored only in the local
-  `config.env` and is masked in logs.
+
+* Loopback-only server (`127.0.0.1`) with a Host header check and a per-session token.
+* Request logging is off by default; configurable retention and manual purge.
+* Self-hosted font; a single runtime network destination (`api.foxentry.com`).
+* TLS with certificate verification; the API key is stored only in the local
+`config.env` and is masked in logs.
+
