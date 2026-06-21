@@ -41,6 +41,8 @@ jobs:
           files-folder: dist
           files-folder-filter: exe
           file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
       - name: Verify signature
         if: env.SIGN_ENABLED == 'true'
         shell: pwsh
