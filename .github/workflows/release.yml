@@ -21,7 +21,7 @@ jobs:
       SIGN_ENABLED: ${{ secrets.AZURE_TENANT_ID != '' }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with: { python-version: "3.11" }
       - name: Install build deps
         run: pip install pyinstaller openpyxl==3.1.5 et_xmlfile==2.0.0
@@ -83,7 +83,7 @@ jobs:
       SIGN_ENABLED: ${{ secrets.APPLE_DEVELOPER_ID != '' }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with: { python-version: "3.11" }
       - name: Install build deps
         run: pip install pyinstaller openpyxl==3.1.5 et_xmlfile==2.0.0
@@ -141,7 +141,7 @@ jobs:
       attestations: write   # write the attestation
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with: { python-version: "3.11" }
       - name: Install build deps
         run: pip install pyinstaller openpyxl==3.1.5 et_xmlfile==2.0.0
