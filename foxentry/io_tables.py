@@ -193,28 +193,44 @@ class StreamWriter:
             count = sum(1 for _ in f)
         return max(0, count - 1)
 
-    def load_results(self, result_columns, not_filled, limit=None):
+    def load_results(self, result_columns, not_filled, limit=None, proposal_columns=None):
         """Read the result breakdown from the already-written output (for the report after resume).
 
-        Returns (Counter by_result, api_calls, errors). Counted per cell
+        Returns (by_result, api_calls, errors, by_outcome). Counted per cell
         (service x row); empty/unfilled ones are not counted (no call happened).
+
+        The technical `_proposal` codes are read back too - everything is counted from
+        those, so a resumed run must not fall back to reading the translated result text.
+        A file half-processed in one language and resumed in another still counts the
+        same: `outcome_for()` matches whole labels against every translation.
         """
         from collections import Counter
         from . import i18n
+        from .processor import ERROR_PROPOSAL, outcome_for
         out: Counter = Counter()
+        by_outcome: Counter = Counter()
         calls = 0
         errors = 0
         if not self.path.is_file():
-            return out, calls, errors
-        err = i18n.t("res_error")
+            return out, calls, errors, by_outcome
+        # A run may have been written in one language and resumed in another. Both markers
+        # are therefore matched against every translation, not just the current one - a row
+        # written as "(nevyplněno)" must still be recognised as unfilled by an English UI.
+        skip = i18n.all_labels("res_not_filled") | {not_filled}
+        err = i18n.all_labels("res_error")
         with self.path.open("r", encoding=self.encoding, newline="") as f:
             rdr = csv.reader(f, delimiter=";")
             try:
                 hdr = next(rdr)
             except StopIteration:
-                return out, calls, errors
+                return out, calls, errors, by_outcome
             idx = {c.strip(): i for i, c in enumerate(hdr)}
-            cols = [idx[c] for c in result_columns if c in idx]
+            pairs = []
+            for n, res_col in enumerate(result_columns):
+                if res_col not in idx:
+                    continue
+                prop_col = (proposal_columns or [None] * len(result_columns))[n]
+                pairs.append((idx[res_col], idx.get(prop_col) if prop_col else None))
             rows_n = 0
             for row in rdr:
                 if limit is not None and rows_n >= limit:
@@ -222,16 +238,19 @@ class StreamWriter:
                 if not any(c.strip() for c in row):
                     continue
                 rows_n += 1
-                for ci in cols:
+                for ci, pi in pairs:
                     v = row[ci].strip() if ci < len(row) else ""
-                    if not v or v == not_filled:
+                    if not v or v in skip:
                         continue
                     out[v] += 1
-                    if v == err:
+                    proposal = (row[pi].strip() if (pi is not None and pi < len(row)) else "")
+                    if v in err:
                         errors += 1
-                    else:
-                        calls += 1
-        return out, calls, errors
+                        by_outcome[proposal or ERROR_PROPOSAL] += 1
+                        continue
+                    calls += 1
+                    by_outcome[outcome_for(proposal, v)] += 1
+        return out, calls, errors, by_outcome
 
     def header_matches(self) -> bool:
         if not self.path.is_file():

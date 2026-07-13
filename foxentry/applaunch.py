@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 AVANTRO s.r.o.
 """Open the local wizard UI like a standalone app window.
 
 When a Chromium-based browser (Chrome / Edge / Brave / Chromium) is available we

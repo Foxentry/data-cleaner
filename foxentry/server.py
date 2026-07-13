@@ -29,15 +29,17 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
 from . import applog
+from . import countries
 from . import config as config_mod
 from . import i18n, mapping
 from . import io_tables
 from . import __version__
 from .api import AuthError, CreditError, FoxentryClient, Limits
+from .detect import coverage_warnings, detect_country
 from .endpoints import SERVICE_ALIAS
 from .io_tables import FileError, StreamWriter, no_header, load_table
-from .processor import build_output_header, count_api_calls, process
-from .report import _format_time, marketing_metrics, create_report
+from .processor import build_output_header, process
+from .report import _format_time, flag_counts, marketing_metrics, create_report
 
 SUPPORTED = (".csv", ".tsv", ".txt", ".xlsx", ".xlsm")
 _WIZARD = config_mod.RESOURCE_ROOT / "foxentry" / "wizard.html"
@@ -104,7 +106,7 @@ def _save_run_summary(file: str, summary: dict) -> None:
         pass
 
 # last run state (local, single user)
-_RUN: dict = {"active": False, "done": 0, "total": 0, "by_result": {},
+_RUN: dict = {"active": False, "done": 0, "total": 0, "by_flag": [],
               "calls": 0, "errors": 0, "finished": False, "ok": True,
               "outputs": [], "message": "", "run_time": 0.0, "jobs": []}
 _RUN_LOCK = threading.Lock()
@@ -124,22 +126,41 @@ def _list_files(cfg) -> list[str]:
     )
 
 
-def _find_probe(rows, tasks, done, limit, default_country):
+def _clean_country(value) -> str | None:
+    """Accept only a country we actually know; anything else means "mixed data"."""
+    code = (value or "").strip().upper()
+    return code if code in countries.CALLING_CODES else None
+
+
+def _country_choices(lang: str) -> list[dict]:
+    """
+    Countries offered in the wizard.
+
+    Only the ones at least one service can validate - offering the other 200 would
+    just be a list of countries where every row comes back invalid.
+    """
+    codes = sorted(set(countries.covered_countries("location"))
+                   | set(countries.covered_countries("company"))
+                   | set(countries.covered_countries("name")))
+    return [{"code": c, "name": countries.name(c, lang), "flag": countries.flag(c)}
+            for c in codes]
+
+
+def _find_probe(rows, tasks, done, limit):
     end = limit if limit is not None else len(rows)
     for i in range(done, min(end, len(rows))):
         for u in tasks:
             if u.has_data(rows[i]):
-                q = u.endpoint.query_from_row(rows[i], u.field_map)
-                if (u.fill_country and default_country and u.endpoint.key in ("location", "company")
-                        and "country" not in q):
-                    q["country"] = default_country
-                return u, q
+                query = u.endpoint.query_from_row(rows[i], u.field_map)
+                # The probe must look like the real thing, country included.
+                if u.country and u.endpoint.takes_country and "country" not in query:
+                    query["country"] = u.country
+                return u, query
     return None, None
 
 
 def _start_run(cfg, input_file: Path, rows, header, tasks, limit, log_run=False):
     """Runs in a separate thread; updates _RUN."""
-    global _RUN
     output_csv = cfg.OUTPUT_DIR / f"{input_file.stem}_result.csv"
 
     start = time.monotonic()
@@ -150,7 +171,7 @@ def _start_run(cfg, input_file: Path, rows, header, tasks, limit, log_run=False)
             _RUN["total"] = total
             _RUN["calls"] = stat.api_calls
             _RUN["errors"] = stat.errors
-            _RUN["by_result"] = dict(stat.by_result)
+            _RUN["by_flag"] = flag_counts(dict(stat.by_outcome))
             _RUN["run_time"] = time.monotonic() - start
 
     def on_call(row):
@@ -166,7 +187,7 @@ def _start_run(cfg, input_file: Path, rows, header, tasks, limit, log_run=False)
         client = FoxentryClient(cfg.api_key, cfg.api_url, cfg.api_version, cfg.timeout,
                                 include_details=cfg.include_details, log_path=_logp)
         result = process(client, input_file, output_csv, rows, header, tasks,
-                      default_country=cfg.default_country, rate_safety=cfg.rate_safety,
+                      rate_safety=cfg.rate_safety,
                       row_limit=limit, resume=True, progress=progress, make_xlsx=True,
                       output_encoding=cfg.output_encoding, guard_csv=cfg.csv_guard,
                       concurrency=cfg.concurrency, on_call=on_call)
@@ -179,7 +200,7 @@ def _start_run(cfg, input_file: Path, rows, header, tasks, limit, log_run=False)
             create_report(report, input_file.name, tasks, result.stats, True,
                           result.output_csv, result.output_xlsx, duration)
             outputs.append(report.name)
-        value = marketing_metrics(dict(result.stats.by_result),
+        value = marketing_metrics(dict(result.stats.by_outcome),
                                       [u.endpoint.key for u in tasks])
         # enrichment per service, keyed by the (display-ready) task label
         enr_by_label: dict = {}
@@ -188,9 +209,12 @@ def _start_run(cfg, input_file: Path, rows, header, tasks, limit, log_run=False)
             if c:
                 enr_by_label[u.label] = enr_by_label.get(u.label, 0) + c
         enriched_total = getattr(result.stats, "enriched", 0)
+        # The wizard and the HTML report must never count anything themselves: both are
+        # given the same bars, computed once from the API's own codes by `flag_counts()`.
+        by_flag = flag_counts(dict(result.stats.by_outcome))
         summary = {"file": input_file.name, "done": result.stats.total_rows,
                   "calls": result.stats.api_calls, "errors": result.stats.errors,
-                  "by_result": dict(result.stats.by_result), "run_time": duration,
+                  "by_flag": by_flag, "run_time": duration,
                   "jobs": [u.label for u in tasks], "outputs": outputs, "value": value,
                   "enriched": enriched_total, "enriched_by_service": enr_by_label,
                   "completed": result.completed, "date": time.strftime("%Y-%m-%d %H:%M")}
@@ -202,7 +226,7 @@ def _start_run(cfg, input_file: Path, rows, header, tasks, limit, log_run=False)
             _save_run_summary(input_file.name, summary)
         with _RUN_LOCK:
             _RUN.update(active=False, finished=True, ok=True, outputs=outputs,
-                        done=result.stats.total_rows, by_result=dict(result.stats.by_result),
+                        done=result.stats.total_rows, by_flag=by_flag,
                         calls=result.stats.api_calls, errors=result.stats.errors, value=value,
                         enriched=enriched_total, enriched_by_service=enr_by_label,
                         completed=result.completed, run_time=duration)
@@ -290,7 +314,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._init()
         if p == "/api/schema":
             q = parse_qs(path.query)
-            return self._schema(q.get("lang", [""])[0])
+            return self._schema(q.get("lang", [""])[0], q.get("country", [""])[0])
         if p == "/api/config":
             return self._json(config_mod.read_config_values())
         if p == "/api/progress":
@@ -436,8 +460,9 @@ class Handler(BaseHTTPRequestHandler):
             last_report = None
         self._json({
             "lang": cfg.lang,
-            "langs": i18n.DOSTUPNE_JAZYKY,
+            "langs": i18n.AVAILABLE_LANGUAGES,
             "services": mapping.schema_for_ui(cfg.lang),
+            "countries": _country_choices(cfg.lang),
             "files": _list_files(cfg),
             "default_country": cfg.default_country,
             "test_sample": cfg.test_sample,
@@ -453,17 +478,24 @@ class Handler(BaseHTTPRequestHandler):
             "app_version": __version__,
         })
 
-    def _schema(self, lang):
-        """Localized service schema (mapping + settings) for switching the UI language."""
+    def _schema(self, lang, country=None):
+        """
+        Localized service schema (mapping + settings).
+
+        Re-fetched when the user switches language *or* changes the country of the
+        data, because the examples and the prefix order follow the country.
+        """
         cfg = config_mod.Config()
-        if lang not in i18n.DOSTUPNE_JAZYKY:
+        if lang not in i18n.AVAILABLE_LANGUAGES:
             lang = cfg.lang
+        country = _clean_country(country)
         i18n.set_lang(lang)
         try:
-            services = mapping.schema_for_ui(lang)
+            services = mapping.schema_for_ui(lang, country)
         finally:
             i18n.set_lang(cfg.lang)
-        self._json({"ok": True, "lang": lang, "services": services})
+        self._json({"ok": True, "lang": lang, "country": country,
+                    "services": services, "countries": _country_choices(lang)})
 
     def _save_config(self):
         values = self._body()
@@ -540,12 +572,22 @@ class Handler(BaseHTTPRequestHandler):
         if not has_header:
             header, rows = no_header(header, rows)
         sample = [[r.get(h, "") for h in header] for r in rows[:12]]
-        suggestion = mapping.suggest_mapping(header, rows)
+        # Detect the country first: the classifier uses it to match postal codes
+        # against the right country instead of guessing across all of them.
+        detected = detect_country(rows)
+        country = _clean_country(cfg.default_country) or (
+            detected.country if detected.is_confident else None)
+        suggestion = mapping.suggest_mapping(header, rows, country)
+        services = sorted({(c.get("candidates") or [{}])[0].get("service")
+                           for c in suggestion} - {None})
         self._json({
             "ok": True, "header": header, "rows": sample, "total": len(rows),
             "encoding": enc_info, "hasHeaderRow": has_header,
             "suggestion": suggestion,
-            "suggested_settings": mapping.suggest_settings(suggestion, rows, cfg.default_country),
+            "suggested_settings": mapping.suggest_settings(suggestion, rows, country),
+            "detected_country": detected.as_dict(),
+            "coverage_warnings": coverage_warnings(services, country),
+            "countries": _country_choices(cfg.lang),
         })
 
     def _prepare(self, data):
@@ -559,7 +601,7 @@ class Handler(BaseHTTPRequestHandler):
         if not data.get("hasHeader", True):
             header, rows = no_header(header, rows)
         tasks = mapping.build_tasks(data.get("mapping", []), data.get("settings", {}),
-                                     cfg.default_country, cfg.lang)
+                                     _clean_country(data.get("country")), cfg.lang)
         if not tasks:
             raise FileError("no validations mapped")
         scope = data.get("scope", "test")
@@ -601,7 +643,7 @@ class Handler(BaseHTTPRequestHandler):
         client = FoxentryClient(cfg.api_key, cfg.api_url, cfg.api_version, cfg.timeout,
                                 include_details=cfg.include_details,
                                 log_path=str(cfg.LOG_DIR / "probe.jsonl") if cfg.log_requests else None)
-        u, q = _find_probe(rows, tasks, done, limit, cfg.default_country)
+        u, q = _find_probe(rows, tasks, done, limit)
         limits = Limits()
         connected, conn_error, conn_detail = True, None, None
         probe_ms = None
@@ -644,7 +686,6 @@ class Handler(BaseHTTPRequestHandler):
         })
 
     def _run(self):
-        global _RUN
         data = self._body()
         _save_session_record(data)
         with _RUN_LOCK:
@@ -658,7 +699,7 @@ class Handler(BaseHTTPRequestHandler):
             _RUN.clear()
             _tot = len(rows) if limit is None else limit
             _RUN.update(active=True, done=min(done, _tot), total=_tot,
-                        by_result={}, calls=0, errors=0, finished=False, ok=True,
+                        by_flag=[], calls=0, errors=0, finished=False, ok=True,
                         outputs=[], message="", completed=False, run_time=0.0,
                         live_calls=0, current=done, resume_from=done,
                         jobs=[u.label for u in tasks])

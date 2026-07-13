@@ -16,6 +16,7 @@ If you discover a security issue in Foxentry Data Cleaner, please report it priv
 
 | Version | Supported          |
 |---------|--------------------|
+| 1.1.x   | :white_check_mark: |
 | 1.0.x   | :white_check_mark: |
 | < 1.0   | :x:                |
 

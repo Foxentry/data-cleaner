@@ -15,81 +15,126 @@ from datetime import datetime
 from pathlib import Path
 
 from . import i18n
-from .processor import Stats, Task, _is_enrich
+from .processor import ERROR_PROPOSAL, STILL_INVALID, Stats, Task, is_enrich
 
-# Colors by internal proposal codes (language-independent)
-_COLOR_KEYS = {
+# Everything below is decided by the API's own `proposal` code - never by the words in
+# the translated result. Matching on text meant the Czech "neplatné (opraven jen formát)"
+# contained "oprav" and was counted as a rescue, while the English label was not: the same
+# rows produced different numbers depending on the interface language.
+#
+# What the codes mean (Foxentry API):
+#   *Correction*  a correction was made - even a partial one, and even when the value
+#                 stays invalid afterwards (a phone number can be reformatted and still
+#                 not exist). It is still a correction.
+#   *Suggestion*  the API has candidates but cannot decide - the user must pick.
+#   valid / invalid / unknown  the verdict itself.
+
+_FLAG_COLOR = {
     "valid": "#3fb950",
-    "validWithSuggestion": "#56d364",
-    "invalidWithCorrection": "#58a6ff",
-    "invalidWithPartialCorrection": "#79c0ff",
-    "invalidWithCorrectionWithSuggestion": "#388bfd",
-    "invalidWithSuggestion": "#d29922",
-    "invalidWithPartialCorrectionWithSuggestion": "#d29922",
+    "corrected": "#58a6ff",
     "invalid": "#f85149",
-    "unknownWithCorrection": "#a371f7",
-    "unknownWithPartialCorrection": "#a371f7",
-    "": "#8b949e",
+    "suggestion": "#d29922",
+    "uncertain": "#a371f7",
+    "error": "#db6d28",
 }
 
+# The order the bars appear in.
+_FLAG_ORDER = ("valid", "corrected", "invalid", "suggestion", "uncertain", "error")
 
-def _color_for(name: str) -> str:
-    # name is localized text; we color by keyword content
-    n = name.lower()
-    if i18n.t("res_error").lower() in n or "error" in n or "chyba" in n:
-        return "#db6d28"
-    if i18n.t("res_not_filled").lower() in n or "empty" in n or "nevypln" in n:
-        return "#6e7681"
-    if i18n.t("res_invalid").lower() == n.upper().lower() and "sugg" not in n:
-        return "#f85149"
-    if "invalid" in n or "neplatn" in n.upper().lower():
-        return "#d29922"
-    if "correct" in n or "oprav" in n:
-        return "#58a6ff"
-    if "valid" in n or "platn" in n:
-        return "#3fb950"
-    return "#8b949e"
+
+def flags_for(outcome: str | None) -> set:
+    """
+    What is true about one result. A row can be several things at once, so these are
+    NOT buckets - they are facts, and they overlap on purpose:
+
+      valid       the value is valid once Foxentry is done with it
+      corrected   Foxentry changed something (a partial fix counts - it is still work done)
+      invalid     the value is not valid once Foxentry is done with it
+      suggestion  the API offered candidates and cannot decide - the user has to pick
+
+    A partial correction is BOTH corrected and invalid: the formatting was fixed, the
+    value still does not exist. A `validWithSuggestion` is BOTH valid and a suggestion.
+    Forcing these into one bucket each is what produced five different kinds of "invalid".
+
+    Whether a correction actually made the value valid is decided by
+    `resultCorrected.isValid`, which `processor.outcome_for()` has already folded into
+    the code as `STILL_INVALID` - never by the proposal code on its own.
+    """
+    code = (outcome or "").strip()
+    if code == ERROR_PROPOSAL:
+        return {"error"}
+    if not code:
+        return set()
+
+    still_invalid = code.endswith(STILL_INVALID)
+    if still_invalid:
+        code = code[:-len(STILL_INVALID)]
+
+    out = set()
+    corrected = "Correction" in code
+    partial = "PartialCorrection" in code
+    if "Suggestion" in code:
+        out.add("suggestion")
+    if corrected:
+        out.add("corrected")
+
+    if code.startswith("valid"):
+        out.add("valid")
+    elif code.startswith("invalid"):
+        # A correction only rescues the value if the value is valid afterwards. A partial
+        # one never is; a reformatted phone number that still does not exist is not either.
+        out.add("valid" if (corrected and not partial and not still_invalid) else "invalid")
+    else:
+        out.add("uncertain")        # unknown*
+    return out
+
+
+def flag_counts(by_outcome: dict | None) -> list[dict]:
+    """The bars, computed once for every surface that shows them (HTML report, wizard, CLI).
+
+    Returns them in display order: [{flag, count, pct, color}, …]. `pct` is out of all
+    validated values, so the bars overlap and do not add up to 100 % - see `flags_for()`.
+    """
+    flags: Counter = Counter()
+    validated = 0
+    for outcome, n in (by_outcome or {}).items():
+        f = flags_for(outcome)
+        if not f:
+            continue
+        validated += n
+        for name in f:
+            flags[name] += n
+    total = validated or 1
+    return [{"flag": f, "count": flags[f], "pct": round(100.0 * flags[f] / total, 1),
+             "color": _color_for(f)}
+            for f in _FLAG_ORDER if flags.get(f)]
+
+
+def _color_for(flag: str) -> str:
+    return _FLAG_COLOR.get(flag, "#8b949e")
 
 
 def _esc(x) -> str:
     return html.escape(str(x))
 
 
-def _cat_label(label: str) -> str:
-    """Localized result -> stable category (language-independent).
+def marketing_metrics(by_outcome: dict | None, services: list[str] | None = None) -> dict:
+    """Value metrics (input/output error rate, rescued), counted from the API's own codes."""
+    flags: Counter = Counter()
+    validated = 0
+    input_file = 0
+    for outcome, n in (by_outcome or {}).items():
+        f = flags_for(outcome)
+        if not f or "error" in f:
+            continue
+        validated += n
+        for name in f:
+            flags[name] += n
+        if (outcome or "").startswith("invalid"):
+            input_file += n          # the value arrived wrong, whatever happened next
 
-    clean = valid untouched - fixed = Foxentry corrected (rescued)
-    suggestion = invalid/uncertain with a manual-fix suggestion - invalid = unfixable
-    uncertain = could not verify - notvalidated = empty/unverified - error = communication error
-    """
-    n = (label or "").strip().lower()
-    if not n:
-        return "notvalidated"
-    if "error" in n or "chyba" in n:
-        return "error"
-    if "empty" in n or "nevypln" in n or "unverified" in n or "neověř" in n or "neover" in n:
-        return "notvalidated"
-    if "correct" in n or "oprav" in n:        # corrected -> rescued
-        return "fixed"
-    sugg = ("suggestion" in n) or ("návrh" in n) or ("navrh" in n)
-    if n.startswith("valid") or n.startswith("platn"):
-        return "clean"
-    if n.startswith("invalid") or n.startswith("neplatn"):
-        return "suggestion" if sugg else "invalid"
-    if "uncertain" in n or "nejist" in n or "unknown" in n:
-        return "suggestion" if sugg else "uncertain"
-    return "uncertain"
-
-
-def marketing_metrics(by_result: dict | None, services: list[str] | None = None) -> dict:
-    """Compute value metrics from results (input/output error rate, rescued)."""
-    category: Counter = Counter()
-    for label, n in (by_result or {}).items():
-        category[_cat_label(label)] += n
-    validated = category["clean"] + category["fixed"] + category["suggestion"] + category["invalid"] + category["uncertain"]
-    rescued = category["fixed"]
-    input_file = category["fixed"] + category["suggestion"] + category["invalid"]      # erroneous on input
-    output = category["suggestion"] + category["invalid"]                     # stays erroneous on output
+    rescued = flags["corrected"]     # every correction counts, partial ones included
+    output = flags["invalid"]        # what is still wrong once Foxentry is done
 
     def _r(x: int) -> float:
         return round(100.0 * x / validated, 1) if validated else 0.0
@@ -140,28 +185,33 @@ def _value_card_html(mtr: dict, enriched: int = 0) -> str:
 def create_report(path: Path, filename: str, tasks: list[Task], stat: Stats,
                   completed: bool, output_csv: Path, output_xlsx: Path | None,
                   duration_s: float) -> None:
-    ranked = sorted(stat.by_result.items(), key=lambda x: -x[1])
-    max_v = max((v for _, v in ranked), default=1)
-    total = sum(v for _, v in ranked) or 1
+    # The bars are independent facts about the results, not slices of a pie: a row can be
+    # corrected AND still invalid, or valid AND carry a suggestion. They therefore overlap,
+    # and the percentages are of all validated values - they do not add up to 100 %.
+    bars = flag_counts(getattr(stat, "by_outcome", {}) or {})
+    max_v = max((b["count"] for b in bars), default=1)
 
     rows = []
-    for name, count in ranked:
+    for bar in bars:
+        flag, count, proc = bar["flag"], bar["count"], bar["pct"]
         width = max(2, int(100 * count / max_v))
-        proc = 100 * count / total
         rows.append(f"""
         <div class="bar-row">
-          <div class="bar-label">{_esc(name)}</div>
-          <div class="bar-track"><div class="bar-fill" style="width:{width}%;background:{_color_for(name)}"></div></div>
+          <div class="bar-label">{_esc(i18n.t("cat_" + flag))}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:{width}%;background:{bar["color"]}"></div></div>
           <div class="bar-value">{count} <span class="muted">({proc:.1f} %)</span></div>
         </div>""")
+    if rows:
+        rows.append(f"""
+        <div class="pill" style="margin-top:.9rem">{_esc(i18n.t("rep_overlap"))}</div>""")
 
     def _job_label(u: Task) -> str:
         s = _esc(i18n.endpoint_name(u.endpoint.key))
-        if _is_enrich(u):
+        if is_enrich(u):
             s += f' <span class="enr">+ {i18n.t("rep_enriched")}</span>'
         return s
     listing = ", ".join(_job_label(u) for u in tasks)
-    is_enriched = any(_is_enrich(u) for u in tasks)
+    is_enriched = any(is_enrich(u) for u in tasks)
     # Enrichment chart: how many data points were added per service (bars like the results).
     enr_service = getattr(stat, "enriched_by_service", {}) or {}
     group_key = {u.group: u.endpoint.key for u in tasks}
@@ -181,7 +231,7 @@ def create_report(path: Path, filename: str, tasks: list[Task], stat: Stats,
         f'\n  <div class="card"><h2>{i18n.t("rep_enrich_title")}</h2>'
         f'<div class="pill" style="color:#d29922">{i18n.t("rep_enrich_empty")}</div></div>' if is_enriched else "")
     value_card = _value_card_html(
-        marketing_metrics(stat.by_result, [u.endpoint.key for u in tasks]),
+        marketing_metrics(getattr(stat, "by_outcome", {}), [u.endpoint.key for u in tasks]),
         getattr(stat, "enriched", 0))
     status = i18n.t("rep_status_done") if completed else i18n.t("rep_status_interrupted")
     status_color = "#3fb950" if completed else "#d29922"

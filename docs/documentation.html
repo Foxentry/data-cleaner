@@ -68,7 +68,7 @@
 <!-- ===================== ENGLISH ===================== -->
 <div data-block="en">
   <h1><img src="data:image/svg+xml,%3Csvg%20version%3D%221.1%22%20id%3D%22Vrstva_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20236.3%20236.2%22%20style%3D%22enable-background%3Anew%200%200%20236.3%20236.2%3B%22%20xml%3Aspace%3D%22preserve%22%3E%20%3Cstyle%20type%3D%22text%2Fcss%22%3E%20.st0%7Bfill%3A%23E74600%3B%7D%20.st1%7Bfill%3A%23CC3000%3B%7D%20.st2%7Bfill%3A%23FF6102%3B%7D%20%3C%2Fstyle%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_3_2_%22%3E%20%3Cg%20id%3D%22XMLID_42_%22%3E%20%3Cpath%20id%3D%22XMLID_3_%22%20class%3D%22st0%22%20d%3D%22M115.3%2C120.8c7.7%2C18.5%2C33.8%2C54.7%2C38.9%2C61c3.6%2C4.5%2C79.2%2C53.4%2C82.1%2C54.5V0%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_2_2_%22%3E%20%3Cg%20id%3D%22XMLID_49_%22%3E%20%3Cpolygon%20id%3D%22XMLID_59_%22%20class%3D%22st1%22%20points%3D%22115.3%2C120.8%20115.1%2C121.2%2071.7%2C184.9%20114.4%2C236.2%20236.3%2C236.2%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_4_2_%22%3E%20%3Cg%20id%3D%22XMLID_29_%22%3E%20%3Cpath%20id%3D%22XMLID_41_%22%20class%3D%22st2%22%20d%3D%22M43.9%2C154.7C14.2%2C184.5%2C0%2C236.2%2C0%2C236.2h115.3V120.8C115.3%2C120.9%2C71.8%2C126.9%2C43.9%2C154.7z%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_2_%22%3E%20%3Cg%20id%3D%22XMLID_43_%22%3E%20%3Cpolygon%20id%3D%22XMLID_53_%22%20class%3D%22st2%22%20points%3D%22115.3%2C0%20115.3%2C120.8%20236.3%2C120.8%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E" alt="Foxentry" width="20" style="vertical-align:-4px"> Foxentry Data Cleaner</h1>
-  <div class="meta">Documentation · technical &amp; security · for customers &nbsp;·&nbsp; v1.0.0 &nbsp;·&nbsp; API: Foxentry v2.1</div>
+  <div class="meta">Documentation · technical &amp; security · for customers &nbsp;·&nbsp; v1.1.0 &nbsp;·&nbsp; API: Foxentry v2.1</div>
 
   <div class="hero">
     <b>🔒 Your data never leaves your computer.</b> The tool runs locally (Windows / macOS / Linux). Your CSV/Excel file is read on your machine and never uploaded. The only outbound connection is HTTPS to <code>api.foxentry.com</code>, carrying just the individual field values you map for validation — never the whole file.
@@ -141,6 +141,7 @@
   <ul>
     <li><b>Start:</b> run <code>START.bat</code> (Windows) or <code>python run.py</code> — the wizard opens in your browser at <code>127.0.0.1</code>.</li>
     <li><b>Map columns</b> to data types (email, phone, name, address, company); leave others on “ignore”.</li>
+    <li><b>Confirm the country</b> the data comes from. It is detected from the file and pre-filled; the step is skipped when it would change nothing (e.g. e-mails only, phone numbers that already carry their prefix, or a file with its own country column). If a service has no data for that country, the wizard warns you here — before you spend credits on it.</li>
     <li><b>Estimate</b> shows cost &amp; time before anything is sent; you confirm to run.</li>
     <li><b>Results</b> land in <code>output/</code> (cleaned file + HTML report). Original columns are kept; validation columns are added.</li>
     <li><b>Stop/resume:</b> close the window or Ctrl+C anytime — re-running resumes where it stopped, without re-charging done rows.</li>
@@ -156,8 +157,10 @@
     <tr><th>Column</th><th>Meaning</th></tr>
     <tr><td><code>&lt;group&gt;_result</code></td><td>Human-readable status of the record (see the status table below).</td></tr>
     <tr><td><code>&lt;column&gt;_updated</code></td><td>The value <b>after correction</b> — one per mapped column. If Foxentry corrected or normalised the value it is written here; otherwise it equals the original. Your original column stays untouched, so you can compare side by side.</td></tr>
-    <tr><td><code>&lt;group&gt;_suggestion</code></td><td>An alternative the API offers when the value is invalid but a likely candidate exists (e.g. a corrected e-mail). Empty when there is nothing to suggest.</td></tr>
-    <tr><td><code>&lt;group&gt;_note</code></td><td>Why the record stayed invalid — the error description and which fields it relates to, e.g. <code>Value is not valid. (streetWithNumber, city)</code>. Empty when the record ended valid.</td></tr>
+    <tr><td><code>&lt;group&gt;_country</code></td><td>The country Foxentry confirmed for the record, in the format you chose. Added only for services that take a country (address, company) and only when your file has no country column of its own — filling it in is part of the correction.</td></tr>
+    <tr><td><code>&lt;group&gt;_suggestion</code></td><td><b>Every</b> candidate the API offered, shortest form, separated by <code>|</code>. Suggestions appear when the API cannot decide between several matches (an address with no house number can have a dozen); they also appear on a value that is already <i>valid</i>. Empty when there is nothing to suggest.</td></tr>
+    <tr><td><code>&lt;group&gt;_note</code></td><td>Why the record stayed invalid: every error the API reported, worst first, as <code>severity [GROUP/TYPE/SUBTYPE] fields: description</code> — e.g. <code>critical [SYNTAX/VALUE_PART_MISSING/PREFIX] numberFull: Value is missing the prefix.</code> <b>Read the severity.</b> A record can be invalid on an <code>info</code> error alone (letter case, a formatting nit), which is a very different matter from a <code>critical</code> one and you may well decide to accept it. If the value was also corrected on the way, what was corrected is appended — a phone number can be reformatted and still not exist. For a record that ended valid, the note lists what changed.</td></tr>
+    <tr><td><code>&lt;group&gt;_proposal</code></td><td>The technical verdict from the Foxentry API (<code>valid</code>, <code>invalidWithCorrection</code>, <code>invalidWithPartialCorrection</code>, …), exactly as the API returned it. It does not change with the interface language, so it is the column to pivot, filter and count on. Every figure in the HTML report is derived from it.</td></tr>
   </table>
   <p>“group” is the validation key (<code>email</code>, <code>phone</code>, <code>name</code>, <code>location</code>, <code>company</code>; or <code>location1</code>, <code>location2</code>… when you map several of the same type).</p>
 
@@ -196,13 +199,13 @@
   <table>
     <tr><th>Column</th><th>Description</th></tr>
     <tr><td><code>_name</code></td><td>Official company name.</td></tr>
-    <tr><td><code>_registrationNumber</code></td><td>Registration number — CZ/SK = IČO, PL = REGON.</td></tr>
-    <tr><td><code>_taxNumber</code></td><td>Tax number — SK = DIČ, PL = NIP.</td></tr>
-    <tr><td><code>_vatNumber</code></td><td>VAT number — CZ = DIČ, SK = IČ DPH, PL = VAT ID.</td></tr>
+    <tr><td><code>_registrationNumber</code></td><td>Registration number — CZ/SK = IČO, PL = REGON, HU = cégjegyzékszám.</td></tr>
+    <tr><td><code>_taxNumber</code></td><td>Tax number — SK = DIČ, PL = NIP, HU = adószám.</td></tr>
+    <tr><td><code>_vatNumber</code></td><td>VAT number — CZ = DIČ, SK = IČ DPH, PL = VAT ID, HU = közösségi adószám.</td></tr>
     <tr><td><code>_vatNumberSpecial</code></td><td>Group-registration VAT number (CZ).</td></tr>
     <tr><td><code>_address</code></td><td>Registered address.</td></tr>
     <tr><td><code>_addressOfficial</code></td><td>Address as held in the official registry.</td></tr>
-    <tr><td><code>_legalForm</code></td><td>Legal form (e.g. Akciová společnost).</td></tr>
+    <tr><td><code>_legalForm</code></td><td>Legal form, as the register writes it (e.g. <i>Akciová společnost</i> in CZ, <i>Spółka z o.o.</i> in PL).</td></tr>
     <tr><td><code>_nace</code></td><td>Main NACE activity (type of business).</td></tr>
     <tr><td><code>_vatStatus</code></td><td>VAT payer status.</td></tr>
     <tr><td><code>_vatReliable</code></td><td>VAT reliability flag (yes / no).</td></tr>
@@ -220,6 +223,7 @@
     <tr><td><span class="dot g"></span><code>valid (corrected)</code></td><td>Valid, but normalised (formatting, diacritics). Use <code>_updated</code>.</td></tr>
     <tr><td><span class="dot b"></span><code>corrected</code></td><td>Was invalid, fully fixed by Foxentry → use the value in <code>_updated</code>. This is data you’d otherwise lose to typos.</td></tr>
     <tr><td><span class="dot o"></span><code>partially corrected</code></td><td>Part was fixed, but the record as a whole is still invalid. <code>_note</code> says which field and why.</td></tr>
+    <tr><td><span class="dot o"></span><code>invalid (format fixed only)</code></td><td>Foxentry tidied the value up but it is still not a real one — a phone number can end up correctly formatted and still not exist. The reformatted value is in <code>_updated</code>; the record itself remains invalid.</td></tr>
     <tr><td><span class="dot r"></span><code>invalid</code></td><td>Invalid and not fixable. See <code>_note</code>; consider dropping or manual review.</td></tr>
     <tr><td><span class="dot o"></span><code>invalid (suggestion available)</code></td><td>Invalid, but a likely candidate is in <code>_suggestion</code> — review before applying.</td></tr>
     <tr><td><span class="dot m"></span><code>uncertain</code> / <code>uncertain (…)</code></td><td>Foxentry could not determine validity (rare). Treat with caution; <code>_suggestion</code>/<code>_updated</code> may still help.</td></tr>
@@ -227,12 +231,24 @@
     <tr><td><span class="dot r"></span><code>error</code></td><td>Communication error with the API (e.g. a timeout). The row is counted as an error; re-run to retry just those.</td></tr>
   </table>
 
+  <h3>How the report counts</h3>
+  <p>The bars in the HTML report are <b>not slices of a pie</b>. They are independent facts about a value, and one value can be several of them at once — so the percentages deliberately do not add up to 100 %:</p>
+  <table>
+    <tr><th>Bar</th><th>Counts a value when…</th></tr>
+    <tr><td><span class="dot g"></span><b>valid</b></td><td>the value is valid once Foxentry is done with it — whether it arrived valid or was corrected into validity.</td></tr>
+    <tr><td><span class="dot b"></span><b>corrected by Foxentry</b></td><td>Foxentry changed something. A partial fix counts too: work was done even if the value stays invalid.</td></tr>
+    <tr><td><span class="dot r"></span><b>invalid</b></td><td>the value is not valid once Foxentry is done with it. There is exactly one “invalid” — it is never split by how the record failed or how many candidates it has.</td></tr>
+    <tr><td><span class="dot o"></span><b>suggestion offered</b></td><td>the API has candidates but cannot decide. A measure of its own: a valid value can carry a suggestion too.</td></tr>
+  </table>
+  <p>A partially corrected record therefore counts as <i>corrected</i> <b>and</b> <i>invalid</i>. All of it is counted from <code>_proposal</code> and from whether the value is valid after the correction — never from the words in <code>_result</code>, so the figures are identical whichever interface language you run.</p>
+
   <h3>Recommendations</h3>
   <ul>
     <li><b>Run a test batch first.</b> Use the small test scope (or a custom row count) to sanity-check your mapping and pricing before the full run.</li>
-    <li><b>Map a country column when you have one</b> (e.g. <code>země</code> → Country). Otherwise no country is sent; you can force a default in the address/company settings, but per-row country is more accurate for multi-country data.</li>
+    <li><b>Map a country column when you have one</b> (e.g. <code>země</code> → Country). Per-row country is the most accurate option for multi-country data, and it takes precedence over the country chosen in the wizard.</li>
+    <li><b>Check the country step.</b> When your file has no country column, the wizard detects the country from the data and shows you why. The country is sent with the query, so Foxentry can verify it, correct a wrong one and fill it in — it does not restrict the search to that one country.</li>
     <li><b>Keep originals for comparison.</b> Originals are never overwritten — diff <code>&lt;column&gt;</code> against <code>&lt;column&gt;_updated</code> to see exactly what changed.</li>
-    <li><b>Act by status:</b> apply <code>_updated</code> for <i>corrected</i>; review <code>_suggestion</code> for <i>suggestion available</i>; read <code>_note</code> for <i>partially corrected</i> / <i>invalid</i> to decide drop vs. fix.</li>
+    <li><b>Act by status:</b> apply <code>_updated</code> for <i>corrected</i>; review <code>_suggestion</code> for <i>suggestion available</i>; read <code>_note</code> for <i>partially corrected</i> / <i>invalid (format fixed only)</i> / <i>invalid</i> to decide drop vs. fix. To filter or count in a spreadsheet, use <code>_proposal</code> rather than the translated <code>_result</code>.</li>
     <li><b>Use full data scope</b> only when you need the extra columns (GPS, region, vocative, name days, legal form…) — it costs more per row.</li>
     <li><b>Large files:</b> raise concurrency in ⚙ Advanced for faster throughput; you can stop and resume anytime without re-charging finished rows.</li>
     <li><b>Marketing payoff:</b> not e-mailing invalid addresses protects your sender reputation; corrected postal addresses cut returned shipments. The report’s “Foxentry value” section quantifies the input vs. output error rate and how many records were rescued.</li>
@@ -242,7 +258,7 @@
 <!-- ===================== ČEŠTINA ===================== -->
 <div data-block="cs">
   <h1><img src="data:image/svg+xml,%3Csvg%20version%3D%221.1%22%20id%3D%22Vrstva_1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20x%3D%220px%22%20y%3D%220px%22%20viewBox%3D%220%200%20236.3%20236.2%22%20style%3D%22enable-background%3Anew%200%200%20236.3%20236.2%3B%22%20xml%3Aspace%3D%22preserve%22%3E%20%3Cstyle%20type%3D%22text%2Fcss%22%3E%20.st0%7Bfill%3A%23E74600%3B%7D%20.st1%7Bfill%3A%23CC3000%3B%7D%20.st2%7Bfill%3A%23FF6102%3B%7D%20%3C%2Fstyle%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_3_2_%22%3E%20%3Cg%20id%3D%22XMLID_42_%22%3E%20%3Cpath%20id%3D%22XMLID_3_%22%20class%3D%22st0%22%20d%3D%22M115.3%2C120.8c7.7%2C18.5%2C33.8%2C54.7%2C38.9%2C61c3.6%2C4.5%2C79.2%2C53.4%2C82.1%2C54.5V0%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_2_2_%22%3E%20%3Cg%20id%3D%22XMLID_49_%22%3E%20%3Cpolygon%20id%3D%22XMLID_59_%22%20class%3D%22st1%22%20points%3D%22115.3%2C120.8%20115.1%2C121.2%2071.7%2C184.9%20114.4%2C236.2%20236.3%2C236.2%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_kopie_4_2_%22%3E%20%3Cg%20id%3D%22XMLID_29_%22%3E%20%3Cpath%20id%3D%22XMLID_41_%22%20class%3D%22st2%22%20d%3D%22M43.9%2C154.7C14.2%2C184.5%2C0%2C236.2%2C0%2C236.2h115.3V120.8C115.3%2C120.9%2C71.8%2C126.9%2C43.9%2C154.7z%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3Cg%20id%3D%22Obd%C3%A9ln%C3%ADk_1_2_%22%3E%20%3Cg%20id%3D%22XMLID_43_%22%3E%20%3Cpolygon%20id%3D%22XMLID_53_%22%20class%3D%22st2%22%20points%3D%22115.3%2C0%20115.3%2C120.8%20236.3%2C120.8%20%22%2F%3E%20%3C%2Fg%3E%20%3C%2Fg%3E%20%3C%2Fsvg%3E" alt="Foxentry" width="20" style="vertical-align:-4px"> Foxentry čistič dat</h1>
-  <div class="meta">Dokumentace · technická &amp; bezpečnostní · pro zákazníky &nbsp;·&nbsp; v1.0.0 &nbsp;·&nbsp; API: Foxentry v2.1</div>
+  <div class="meta">Dokumentace · technická &amp; bezpečnostní · pro zákazníky &nbsp;·&nbsp; v1.1.0 &nbsp;·&nbsp; API: Foxentry v2.1</div>
 
   <div class="hero">
     <b>🔒 Vaše data nikdy neopustí váš počítač.</b> Nástroj běží lokálně (Windows / macOS / Linux). Soubor CSV/Excel se čte u vás a nikam se nenahrává. Jediné odchozí spojení je HTTPS na <code>api.foxentry.com</code> a nese jen jednotlivé hodnoty polí, které k validaci namapujete — nikdy celý soubor.
@@ -315,6 +331,7 @@
   <ul>
     <li><b>Spuštění:</b> <code>START.bat</code> (Windows) nebo <code>python run.py</code> — průvodce se otevře v prohlížeči na <code>127.0.0.1</code>.</li>
     <li><b>Spárujte sloupce</b> s typy dat (e‑mail, telefon, jméno, adresa, firma); ostatní nechte na „ignorovat".</li>
+    <li><b>Potvrďte zemi</b>, ze které data jsou. Rozpozná se ze souboru a předvyplní; krok se přeskočí, když by nic nezměnil (např. jen e‑maily, telefony s předvolbou nebo soubor s vlastním sloupcem se zemí). Pokud pro danou zemi služba data nemá, průvodce vás varuje tady — dřív, než za to utratíte kredity.</li>
     <li><b>Odhad</b> ukáže cenu a čas dřív, než se cokoli odešle; běh potvrzujete vy.</li>
     <li><b>Výsledky</b> jsou v <code>output/</code> (vyčištěný soubor + HTML report). Původní sloupce zůstávají, validační se přidají.</li>
     <li><b>Přerušení/navázání:</b> okno zavřete nebo Ctrl+C kdykoli — opětovné spuštění naváže tam, kde skončilo, bez opakovaného účtování.</li>
@@ -330,8 +347,10 @@
     <tr><th>Sloupec</th><th>Význam</th></tr>
     <tr><td><code>&lt;skupina&gt;_result</code></td><td>Srozumitelný stav záznamu (viz tabulka stavů níže).</td></tr>
     <tr><td><code>&lt;sloupec&gt;_updated</code></td><td>Hodnota <b>po korekci</b> — jeden sloupec na každé namapované pole. Pokud Foxentry hodnotu opravil nebo normalizoval, je tu; jinak se rovná originálu. Původní sloupec zůstává nedotčený, takže můžete porovnávat.</td></tr>
-    <tr><td><code>&lt;skupina&gt;_suggestion</code></td><td>Alternativa, kterou API nabídne, když je hodnota nevalidní, ale existuje pravděpodobný kandidát (např. opravený e‑mail). Prázdné, když není co navrhnout.</td></tr>
-    <tr><td><code>&lt;skupina&gt;_note</code></td><td>Proč záznam zůstal nevalidní — popis chyby a čeho se týká, např. <code>Value is not valid. (streetWithNumber, city)</code>. Prázdné, když záznam skončil jako platný.</td></tr>
+    <tr><td><code>&lt;skupina&gt;_country</code></td><td>Země, kterou Foxentry pro záznam potvrdil, ve formátu, který jste zvolili. Přidá se jen u služeb, které zemi přijímají (adresa, firma), a jen když soubor vlastní sloupec se zemí nemá — doplnění země je součástí opravy.</td></tr>
+    <tr><td><code>&lt;skupina&gt;_suggestion</code></td><td><b>Všichni</b> kandidáti, které API nabídlo, v nejkratší formě, oddělení znakem <code>|</code>. Návrhy vznikají, když se API nedokáže rozhodnout mezi několika shodami (adresa bez čísla popisného jich může mít tucet); objeví se i u hodnoty, která je už <i>platná</i>. Prázdné, když není co navrhnout.</td></tr>
+    <tr><td><code>&lt;skupina&gt;_note</code></td><td>Proč záznam zůstal nevalidní: všechny chyby, které API vrátilo, nejzávažnější první, ve tvaru <code>severity [GROUP/TYPE/SUBTYPE] pole: popis</code> — např. <code>critical [SYNTAX/VALUE_PART_MISSING/PREFIX] numberFull: Value is missing the prefix.</code> <b>Čtěte severitu.</b> Záznam může být neplatný i kvůli samotné chybě se severitou <code>info</code> (velikost písmen, drobnost ve formátu), což je něco úplně jiného než <code>critical</code> a klidně se můžete rozhodnout, že to přijmete. Pokud se hodnota po cestě také opravila, doplní se i co se opravilo — telefonní číslo může být přeformátované a přesto neexistovat. U záznamu, který skončil jako platný, je v poznámce, co se změnilo.</td></tr>
+    <tr><td><code>&lt;skupina&gt;_proposal</code></td><td>Technický verdikt z Foxentry API (<code>valid</code>, <code>invalidWithCorrection</code>, <code>invalidWithPartialCorrection</code>, …) přesně tak, jak ho API vrátilo. Nemění se s jazykem rozhraní, takže právě podle něj filtrujte a počítejte. Všechna čísla v HTML reportu se odvozují z něj.</td></tr>
   </table>
   <p>„skupina" je klíč validace (<code>email</code>, <code>phone</code>, <code>name</code>, <code>location</code>, <code>company</code>; nebo <code>location1</code>, <code>location2</code>… když namapujete víc téhož typu).</p>
 
@@ -370,13 +389,13 @@
   <table>
     <tr><th>Sloupec</th><th>Popis</th></tr>
     <tr><td><code>_name</code></td><td>Oficiální název firmy.</td></tr>
-    <tr><td><code>_registrationNumber</code></td><td>Registrační číslo — CZ/SK = IČO, PL = REGON.</td></tr>
-    <tr><td><code>_taxNumber</code></td><td>Daňové číslo — SK = DIČ, PL = NIP.</td></tr>
-    <tr><td><code>_vatNumber</code></td><td>DPH číslo — CZ = DIČ, SK = IČ DPH, PL = VAT ID.</td></tr>
+    <tr><td><code>_registrationNumber</code></td><td>Registrační číslo — CZ/SK = IČO, PL = REGON, HU = cégjegyzékszám.</td></tr>
+    <tr><td><code>_taxNumber</code></td><td>Daňové číslo — SK = DIČ, PL = NIP, HU = adószám.</td></tr>
+    <tr><td><code>_vatNumber</code></td><td>DPH číslo — CZ = DIČ, SK = IČ DPH, PL = VAT ID, HU = közösségi adószám.</td></tr>
     <tr><td><code>_vatNumberSpecial</code></td><td>Skupinové DIČ k DPH (CZ).</td></tr>
     <tr><td><code>_address</code></td><td>Sídlo (validovaná adresa).</td></tr>
     <tr><td><code>_addressOfficial</code></td><td>Adresa dle oficiálního registru.</td></tr>
-    <tr><td><code>_legalForm</code></td><td>Právní forma (např. Akciová společnost).</td></tr>
+    <tr><td><code>_legalForm</code></td><td>Právní forma, jak ji uvádí rejstřík (např. <i>Akciová společnost</i> v CZ, <i>Spółka z o.o.</i> v PL).</td></tr>
     <tr><td><code>_nace</code></td><td>Hlavní obor činnosti (NACE).</td></tr>
     <tr><td><code>_vatStatus</code></td><td>Stav plátcovství DPH.</td></tr>
     <tr><td><code>_vatReliable</code></td><td>Spolehlivost plátce DPH (ano / ne).</td></tr>
@@ -394,6 +413,7 @@
     <tr><td><span class="dot g"></span><code>platné (opraveno)</code></td><td>Platné, jen normalizované (formát, diakritika). Použijte <code>_updated</code>.</td></tr>
     <tr><td><span class="dot b"></span><code>opraveno</code></td><td>Bylo nevalidní, Foxentry plně opravil → použijte hodnotu z <code>_updated</code>. To jsou data, o která byste jinak kvůli překlepům přišli.</td></tr>
     <tr><td><span class="dot o"></span><code>částečně opraveno</code></td><td>Část se opravila, ale záznam jako celek zůstává nevalidní. V <code>_note</code> je které pole a proč.</td></tr>
+    <tr><td><span class="dot o"></span><code>neplatné (opraven jen formát)</code></td><td>Foxentry hodnotu upravil, ale reálně pořád neexistuje — telefonní číslo může být správně naformátované a přesto neplatné. Přeformátovaná hodnota je v <code>_updated</code>, samotný záznam zůstává nevalidní.</td></tr>
     <tr><td><span class="dot r"></span><code>neplatné</code></td><td>Nevalidní a neopravitelné. Viz <code>_note</code>; zvažte vyřazení nebo ruční kontrolu.</td></tr>
     <tr><td><span class="dot o"></span><code>neplatné (existuje návrh)</code></td><td>Nevalidní, ale pravděpodobný kandidát je v <code>_suggestion</code> — před použitím zkontrolujte.</td></tr>
     <tr><td><span class="dot m"></span><code>nejisté</code> / <code>nejisté (…)</code></td><td>Foxentry nedokázal určit platnost (vzácné). Buďte opatrní; <code>_suggestion</code>/<code>_updated</code> může i tak pomoct.</td></tr>
@@ -401,12 +421,24 @@
     <tr><td><span class="dot r"></span><code>chyba</code></td><td>Chyba komunikace s API (např. timeout). Řádek se počítá jako chyba; opětovným spuštěním se zkusí znovu jen tyto.</td></tr>
   </table>
 
+  <h3>Jak se report počítá</h3>
+  <p>Sloupce v HTML reportu <b>nejsou dílky koláče</b>. Jsou to nezávislé skutečnosti o hodnotě a jedna hodnota jich může naplnit víc naráz — procenta proto záměrně nedávají 100 %:</p>
+  <table>
+    <tr><th>Ukazatel</th><th>Hodnota se počítá, když…</th></tr>
+    <tr><td><span class="dot g"></span><b>platné</b></td><td>je hodnota platná poté, co s ní Foxentry skončil — ať už platná přišla, nebo se do platnosti opravila.</td></tr>
+    <tr><td><span class="dot b"></span><b>opraveno Foxentry</b></td><td>Foxentry něco změnil. Počítá se i částečná oprava: práce se odvedla, i když hodnota zůstala neplatná.</td></tr>
+    <tr><td><span class="dot r"></span><b>neplatné</b></td><td>hodnota není platná ani poté, co s ní Foxentry skončil. Stav „neplatné" je právě jeden — nikdy se neštěpí podle toho, jak záznam selhal ani kolik má kandidátů.</td></tr>
+    <tr><td><span class="dot o"></span><b>nabídnut návrh</b></td><td>API má kandidáty, ale nedokáže se rozhodnout. Vlastní ukazatel: návrh může mít i platná hodnota.</td></tr>
+  </table>
+  <p>Částečně opravený záznam se tedy počítá jako <i>opraveno</i> <b>i</b> <i>neplatné</i>. Všechno se počítá ze sloupce <code>_proposal</code> a z toho, zda je hodnota po opravě platná — nikdy ze slov v <code>_result</code>. Čísla jsou proto stejná, ať běžíte v kterémkoli jazyce rozhraní.</p>
+
   <h3>Doporučení</h3>
   <ul>
     <li><b>Nejdřív testovací várka.</b> Použijte malý testovací rozsah (nebo vlastní počet řádků) a zkontrolujte mapování i cenu před plným během.</li>
-    <li><b>Namapujte sloupec se zemí, pokud ho máte</b> (např. <code>země</code> → Country). Jinak se žádná země neposílá; v nastavení adresy/firmy lze vynutit výchozí zemi, ale u vícezemních dat je přesnější země per řádek.</li>
+    <li><b>Namapujte sloupec se zemí, pokud ho máte</b> (např. <code>země</code> → Country). U vícezemních dat je země per řádek nejpřesnější a má přednost před zemí zvolenou v průvodci.</li>
+    <li><b>Zkontrolujte krok se zemí.</b> Když soubor sloupec se zemí nemá, průvodce ji rozpozná z dat a zdůvodní proč. Země se posílá jako součást dotazu, takže ji Foxentry může ověřit, špatnou opravit a chybějící doplnit — neomezuje tím vyhledávání na jedinou zemi.</li>
     <li><b>Originály pro porovnání.</b> Originály se nikdy nepřepisují — porovnejte <code>&lt;sloupec&gt;</code> vs. <code>&lt;sloupec&gt;_updated</code> a vidíte přesně, co se změnilo.</li>
-    <li><b>Postupujte podle stavu:</b> u <i>opraveno</i> použijte <code>_updated</code>; u <i>existuje návrh</i> zkontrolujte <code>_suggestion</code>; u <i>částečně opraveno</i> / <i>neplatné</i> přečtěte <code>_note</code> a rozhodněte vyřadit vs. opravit.</li>
+    <li><b>Postupujte podle stavu:</b> u <i>opraveno</i> použijte <code>_updated</code>; u <i>existuje návrh</i> zkontrolujte <code>_suggestion</code>; u <i>částečně opraveno</i> / <i>neplatné (opraven jen formát)</i> / <i>neplatné</i> přečtěte <code>_note</code> a rozhodněte vyřadit vs. opravit. Pro filtrování a počítání v tabulce používejte <code>_proposal</code>, ne přeložený <code>_result</code>.</li>
     <li><b>Full datascope</b> používejte jen když potřebujete sloupce navíc (GPS, kraj, 5.&nbsp;pád, jmeniny, právní forma…) — stojí víc za řádek.</li>
     <li><b>Velké soubory:</b> v ⚙ Advanced zvyšte souběžnost pro vyšší propustnost; běh lze kdykoli zastavit a navázat bez opakovaného účtování hotových řádků.</li>
     <li><b>Marketingový přínos:</b> neposílání na nevalidní e‑maily chrání reputaci odesílatele, opravené poštovní adresy snižují vratkovost. Sekce „Přínos Foxentry" v reportu vyčíslí chybovost na vstupu vs. výstupu a kolik záznamů se zachránilo.</li>

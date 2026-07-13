@@ -144,8 +144,9 @@ class Config:
         except ValueError:
             self.test_sample = 5
 
-        # Default country for validations where it makes sense
-        self.default_country: str = get("DEFAULT_COUNTRY", "CZ").upper() or "CZ"
+        # Country of the data. Empty = detect it from the file (the usual case);
+        # set it only to force one country for every run.
+        self.default_country: str = get("DEFAULT_COUNTRY", "").upper()
 
         # Safety margin below the rate limit (0.0 - 1.0). 0.9 = run at 90% of the limit.
         try:
@@ -239,7 +240,7 @@ CONFIG_KEYS = [
 _DEFAULTS = {
     "FOXENTRY_API_KEY": "", "LANGUAGE": "en",
     "FOXENTRY_API_URL": "https://api.foxentry.com", "FOXENTRY_API_VERSION": "2.1",
-    "TEST_SAMPLE": "5", "DEFAULT_COUNTRY": "CZ", "INPUT_ENCODING": "auto",
+    "TEST_SAMPLE": "5", "DEFAULT_COUNTRY": "", "INPUT_ENCODING": "auto",
     "OUTPUT_ENCODING": "utf-8-sig", "RATE_LIMIT_RESERVE": "0.85",
     "TIMEOUT": "30", "CSV_INJECTION_GUARD": "on", "CURRENCY": "CZK",
     "INCLUDE_REQUEST_DETAILS": "off", "LOG_REQUESTS": "off",

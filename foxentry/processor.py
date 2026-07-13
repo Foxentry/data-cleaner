@@ -36,7 +36,7 @@ from typing import Callable
 from .api import AuthError, FoxentryClient, Limits, RateLimitError
 from .endpoints import ENDPOINTS, KEY_TO_TYPE, FILENAME_PREFIXES, Endpoint, human_result
 from . import applog
-from .io_tables import StreamWriter, csv_to_xlsx, load_table
+from .io_tables import StreamWriter, csv_to_xlsx
 from . import i18n
 
 
@@ -58,7 +58,7 @@ class Task:
     options: dict | None = None
     group: str = ""
     label: str = ""
-    fill_country: bool = False  # add default_country to the query when not mapped (address/company only)
+    country: str | None = None   # added to the query when the file maps no country column
 
     def __post_init__(self) -> None:
         if self.options is None:
@@ -72,11 +72,41 @@ class Task:
         return any((row.get(s) or "").strip() for s in self.field_map.values())
 
 
+# A row whose call failed has no proposal at all - the API never answered. It still has
+# to be counted, so it gets a code of its own rather than being told apart by its text.
+ERROR_PROPOSAL = "__error__"
+
+# A correction that did not make the value valid.
+#
+# By the API contract `invalidWithCorrection` always comes with `resultCorrected.isValid
+# == true`; a correction that leaves the value invalid is `invalidWithPartialCorrection`.
+# The phone service currently breaks that: it reports `invalidWithCorrection` for a number
+# it merely reformatted (`+48 601 234 567` for `601234567`) while `resultCorrected.isValid`
+# is false - the number still does not exist.
+#
+# The verdict therefore comes from `resultCorrected.isValid`, not from the proposal code:
+# a correction is always counted as a correction, but a value that is invalid after it is
+# counted as invalid. Marking it here keeps the `_proposal` column exactly as the API sent
+# it, and once the service is fixed the same rows arrive as `invalidWithPartialCorrection`
+# and are counted the same way - nothing here has to change.
+STILL_INVALID = "+stillInvalid"
+
+
+def outcome_for(proposal: str, label: str) -> str:
+    """The outcome of one validated value: the API's proposal code, plus a marker when the
+    correction left the value invalid."""
+    proposal = (proposal or "").strip()
+    if proposal and "Correction" in proposal and label in i18n.all_labels("res_invalid_reformatted"):
+        return proposal + STILL_INVALID
+    return proposal
+
+
 @dataclass
 class Stats:
     total_rows: int = 0
     api_calls: int = 0
-    by_result: Counter = field(default_factory=Counter)
+    by_result: Counter = field(default_factory=Counter)   # human labels - for display only
+    by_outcome: Counter = field(default_factory=Counter)  # technical codes - EVERYTHING is counted from these
     errors: int = 0
     enriched: int = 0   # number of filled enrich cells (added data points)
     enriched_by_service: Counter = field(default_factory=Counter)  # breakdown per service
@@ -87,6 +117,7 @@ class Stats:
             "total_rows": self.total_rows,
             "api_calls": self.api_calls,
             "by_result": dict(self.by_result),
+            "by_outcome": dict(self.by_outcome),
             "errors": self.errors,
             "enriched": self.enriched,
             "enriched_by_service": dict(self.enriched_by_service),
@@ -94,8 +125,13 @@ class Stats:
         }
 
 
-def tasks_from_filename(filename: str, header: list[str], default_country: str) -> list[Task]:
-    """Build the task list from the file-name prefix and available columns."""
+def tasks_from_filename(filename: str, header: list[str], country: str | None = None) -> list[Task]:
+    """
+    Build the task list from the file-name prefix and available columns (text mode).
+
+    `country` is sent in the query for the endpoints that accept one, exactly as the
+    wizard does.
+    """
     base = filename.lower()
     keys: list[str] = []
     for prefix, eps in FILENAME_PREFIXES.items():
@@ -111,7 +147,8 @@ def tasks_from_filename(filename: str, header: list[str], default_country: str) 
         ep = ENDPOINTS[key]
         field_map = ep.detect_map(header)
         if field_map:  # endpoint has at least one usable column in the file
-            tasks.append(Task(endpoint=ep, field_map=field_map))
+            task_country = None if "country" in field_map else (country or None)
+            tasks.append(Task(endpoint=ep, field_map=field_map, country=task_country))
     return tasks
 
 
@@ -126,8 +163,15 @@ def build_output_header(input_header: list[str], tasks: list[Task]) -> list[str]
             column = u.field_map.get(fields.api_field)
             if column:
                 out.append(f"{column}_updated")
+        # The country is part of the correction. When the file has no country column,
+        # the validated one would otherwise be thrown away - so give it a column.
+        if u.endpoint.takes_country and "country" not in u.field_map:
+            out.append(f"{k}_country")
         out.append(f"{k}_suggestion")
         out.append(f"{k}_note")
+        # The proposal is the API's own verdict, in its own words. Everything that has
+        # to be counted or coloured reads THIS - never the translated result text.
+        out.append(f"{k}_proposal")
     # enrich columns go all the way to the end - as separate columns
     for u in tasks:
         out.extend(_enrich_columns(u))
@@ -151,10 +195,8 @@ def count_api_calls(rows: list[dict[str, str]], tasks: list[Task]) -> int:
     return count
 
 
-def _primary_suggestion(u: Task, suggestions: list) -> str:
-    if not suggestions:
-        return ""
-    data = suggestions[0].get("data") if isinstance(suggestions[0], dict) else None
+def _suggestion_text(u: Task, suggestion) -> str:
+    data = suggestion.get("data") if isinstance(suggestion, dict) else None
     if not isinstance(data, dict):
         return ""
     extraction = u.endpoint.fields[0].extraction
@@ -162,7 +204,25 @@ def _primary_suggestion(u: Task, suggestions: list) -> str:
     return "" if value is None else str(value)
 
 
-def _is_enrich(u: Task) -> bool:
+def _suggestions_cell(u: Task, suggestions: list) -> str:
+    """
+    Every suggestion, each in its shortest form, separated by " | ".
+
+    Saying only "8 records match" left the user with nowhere to go: the candidates were
+    in the response and nothing was done with them. They are all listed - the value only,
+    without the details around it - so the choice can be made in the spreadsheet itself.
+    """
+    if not suggestions:
+        return ""
+    seen: list[str] = []
+    for suggestion in suggestions:
+        text = _suggestion_text(u, suggestion)
+        if text and text not in seen:
+            seen.append(text)
+    return " | ".join(seen)
+
+
+def is_enrich(u: Task) -> bool:
     """Does the task have enrichment enabled? dataScope full (address/company) or, for phone,
     extended validation (validationType extended) - which returns carrier/type.
     Only for services that actually have something to enrich (present in ENRICH_FIELDS)."""
@@ -361,7 +421,7 @@ ENRICH_FIELDS: dict[str, list] = {
 
 def _enrich_columns(u: Task) -> list[str]:
     """Names of enrich columns for a task (empty if not enriched)."""
-    if not _is_enrich(u):
+    if not is_enrich(u):
         return []
     return [f"{u.group}_{suffix}" for suffix, _ in ENRICH_FIELDS.get(u.endpoint.key, [])]
 
@@ -377,55 +437,103 @@ def _enrich_outputs(u: Task, data: dict | None) -> dict[str, object]:
 
 
 def _note_invalid(response: dict) -> str:
-    """Build the note column. For corrected results, summarize what actually changed
-    from `resultCorrected.fixes` (e.g. "city: Vysoká -> Chrastava"). For results that
-    stay invalid, summarize what is wrong from `result.errors` (description + affected
-    fields `relatedTo`). For untouched valid results it returns empty.
+    """Build the note column.
+
+    A value that ended up valid gets a summary of what changed (`resultCorrected.fixes`).
+    A value that is still invalid gets its errors written out in full - severity, the API's
+    codes and the fields they relate to - and, if it was corrected on the way, what was
+    corrected as well: a phone number can be reformatted and still not exist, and the user
+    needs to see both halves of that.
     """
     if not isinstance(response, dict):
         return ""
     result = response.get("result") or {}
     rc = response.get("resultCorrected")
     final_valid = rc.get("isValid") if isinstance(rc, dict) else result.get("isValid")
+    fixed = _fixes_summary(rc if isinstance(rc, dict) else result)
+
     if final_valid:
-        # what was actually fixed (only meaningful when a correction happened)
-        fixes = (rc.get("fixes") if isinstance(rc, dict) else None) or result.get("fixes") or []
-        parts = []
-        for fx in fixes:
-            if not isinstance(fx, dict):
-                continue
-            fd = fx.get("data") or {}
-            field = (fd.get("type") or fd.get("typeFrom") or fx.get("subtype") or "").strip()
-            vf = _scal(fd.get("valueFrom")).strip()
-            vt = _scal(fd.get("value")).strip()
-            if vf and vt and vf != vt:
-                body = f"{vf} \u2192 {vt}"
-            elif vt:
-                body = vt
-            elif vf:
-                body = vf
-            else:
-                continue
-            parts.append(f"{field}: {body}" if field else body)
-        parts = [p for p in dict.fromkeys(parts) if p]
-        if parts:
-            return (i18n.t("note_fixed") + ": " + " \u00b7 ".join(parts))[:500]
-        return ""
+        return fixed[:500]
+
     errors = (result.get("errors")
              or (rc.get("errors") if isinstance(rc, dict) else None) or [])
-    labels = []
-    for e in errors:
-        if not isinstance(e, dict):
-            continue
-        d = (e.get("description") or "").strip()
-        rel = e.get("relatedTo") or []
-        if d:
-            labels.append(d + (" (" + ", ".join(rel) + ")" if rel else ""))
+    labels = _error_labels(errors)
     if not labels:
         inv = (result.get("dataTypes") or {}).get("invalid") or []
         if inv:
             labels.append(i18n.t("note_still_invalid") + ": " + ", ".join(dict.fromkeys(inv)))
-    return " · ".join(dict.fromkeys(labels))[:500]
+    note = " | ".join(labels)
+    if fixed:
+        note = (note + " | " + fixed) if note else fixed
+    return note[:500]
+
+
+def _fixes_summary(src: dict) -> str:
+    """What the API actually changed, e.g. "Fixed: city: Warszwa -> Warszawa"."""
+    parts = []
+    for fx in (src.get("fixes") or []):
+        if not isinstance(fx, dict):
+            continue
+        fd = fx.get("data") or {}
+        field = (fd.get("type") or fd.get("typeFrom") or fx.get("subtype") or "").strip()
+        vf = _scal(fd.get("valueFrom")).strip()
+        vt = _scal(fd.get("value")).strip()
+        if vf and vt and vf != vt:
+            body = f"{vf} \u2192 {vt}"
+        elif vt:
+            body = vt
+        elif vf:
+            body = vf
+        else:
+            continue
+        parts.append(f"{field}: {body}" if field else body)
+    parts = [p for p in dict.fromkeys(parts) if p]
+    return (i18n.t("note_fixed") + ": " + " \u00b7 ".join(parts)) if parts else ""
+
+
+def _error_labels(errors) -> list:
+    """Every error the API reported, written out, worst first.
+
+    The same error often arrives many times over, once per field combination the API tried
+    (an address with a wrong ZIP comes back with a dozen `INVALID_COMBINATION` errors, all
+    with the same sentence and a different `relatedTo`). Listing them all fills the cell with
+    the same words and truncates the rest, so identical errors are merged into one and their
+    fields are pooled.
+    """
+    merged: dict = {}
+    for e in errors:
+        if not isinstance(e, dict):
+            continue
+        key = (
+            (e.get("severity") or "").strip(),
+            tuple(str(c).strip() for c in (e.get("group"), e.get("type"), e.get("subtype")) if c),
+            (e.get("description") or "").strip(),
+        )
+        fields = merged.setdefault(key, {})
+        for r in (e.get("relatedTo") or []):
+            if r:
+                fields[str(r).strip()] = None      # dict = a set that keeps its order
+
+    out = []
+    for (severity, codes, desc), fields in merged.items():
+        head = " ".join(x for x in (severity, ("[" + "/".join(codes) + "]") if codes else "") if x)
+        tail = ", ".join(fields)
+        if tail and desc:
+            tail = f"{tail}: {desc}"
+        elif desc:
+            tail = desc
+        label = (head + (" " + tail if tail else "")).strip()
+        if label:
+            out.append((_SEVERITY_ORDER.get(severity, 99), label))
+
+    # Critical first, then warnings, then info: a value can be invalid on an `info` error
+    # alone (wrong letter case, a formatting nit), which the user may well decide to accept.
+    out.sort(key=lambda x: x[0])
+    return [label for _, label in out]
+
+
+# The API's own severity values, not translated. Anything else sorts last.
+_SEVERITY_ORDER = {"critical": 0, "warning": 1, "info": 2}
 
 
 def _map_response(u: Task, row: dict[str, str], data: dict) -> dict[str, object]:
@@ -440,7 +548,8 @@ def _map_response(u: Task, row: dict[str, str], data: dict) -> dict[str, object]
     corrected = response.get("resultCorrected")
     suggestions = response.get("suggestions") or []
 
-    out[f"{k}_result"] = human_result(proposal, is_valid)
+    corrected_valid = corrected.get("isValid") if isinstance(corrected, dict) else None
+    out[f"{k}_result"] = human_result(proposal, is_valid, corrected_valid)
 
     # best available data for correction
     if isinstance(corrected, dict):
@@ -462,15 +571,29 @@ def _map_response(u: Task, row: dict[str, str], data: dict) -> dict[str, object]
             new_value = original
         out[f"{column}_updated"] = new_value
 
-    out[f"{k}_suggestion"] = _primary_suggestion(u, suggestions)
-    out[f"{k}_note"] = _note_invalid(response)
+    if u.endpoint.takes_country and "country" not in u.field_map:
+        out[f"{k}_country"] = _country_value(u, best_data)
 
-    if _is_enrich(u):
+    out[f"{k}_suggestion"] = _suggestions_cell(u, suggestions)
+    out[f"{k}_note"] = _note_invalid(response)
+    out[f"{k}_proposal"] = proposal or ""
+
+    if is_enrich(u):
         enr_data = (corrected.get("data") if isinstance(corrected, dict) else None) \
             or result.get("data")
         out.update(_enrich_outputs(u, enr_data))
 
     return out
+
+
+def _country_value(u: Task, data) -> str:
+    """The country the API confirmed or filled in, in the format the user asked for."""
+    if not isinstance(data, dict):
+        return ""
+    field = next((f for f in u.endpoint.fields if f.api_field == "country"), None)
+    if not field or not field.extraction:
+        return ""
+    return field.extraction(data) or ""
 
 
 def _empty_outputs(u: Task, row: dict[str, str], result_text: str) -> dict[str, object]:
@@ -481,9 +604,12 @@ def _empty_outputs(u: Task, row: dict[str, str], result_text: str) -> dict[str, 
         column = u.field_map.get(fields.api_field)
         if column:
             out[f"{column}_updated"] = (row.get(column) or "").strip()
+    if u.endpoint.takes_country and "country" not in u.field_map:
+        out[f"{k}_country"] = ""
     out[f"{k}_suggestion"] = ""
     out[f"{k}_note"] = ""
-    if _is_enrich(u):
+    out[f"{k}_proposal"] = ""
+    if is_enrich(u):
         for sl in _enrich_columns(u):
             out[sl] = ""
     return out
@@ -504,7 +630,6 @@ def process(
     rows: list[dict[str, str]],
     input_header: list[str],
     tasks: list[Task],
-    default_country: str,
     rate_safety: float,
     row_limit: int | None = None,
     resume: bool = True,
@@ -539,9 +664,11 @@ def process(
     # for the WHOLE file (not just the part after restart).
     if done > 0:
         res_columns = [f"{u.group}_result" for u in tasks]
-        seed, seed_calls, seed_errors = write_row.load_results(
-            res_columns, i18n.t("res_not_filled"), limit=done)
+        prop_columns = [f"{u.group}_proposal" for u in tasks]
+        seed, seed_calls, seed_errors, seed_outcome = write_row.load_results(
+            res_columns, i18n.t("res_not_filled"), limit=done, proposal_columns=prop_columns)
         stat.by_result.update(seed)
+        stat.by_outcome.update(seed_outcome)
         stat.api_calls += seed_calls
         stat.errors += seed_errors
 
@@ -565,6 +692,10 @@ def process(
             _enr_groups.setdefault(_u.group, set()).update(cols)
     cache = _RespCache()   # per-run response deduplication
 
+    _result_cols = [(f"{u.group}_result", f"{u.group}_proposal") for u in tasks]
+    _not_filled = i18n.t("res_not_filled")
+    _error = i18n.t("res_error")
+
     def save_result(batch):
         _i, out_row, calls, errors, results, saved = batch
         write_row.write_row(out_row)
@@ -573,6 +704,16 @@ def process(
         stat.deduplicated += saved
         for k, n in results.items():
             stat.by_result[k] += n
+        # Nothing is ever counted from the words in a label. Record the API's own verdict.
+        for res_col, prop_col in _result_cols:
+            label = str(out_row.get(res_col) or "")
+            if not label or label == _not_filled:
+                continue
+            proposal = str(out_row.get(prop_col) or "")
+            if not proposal and label == _error:
+                stat.by_outcome[ERROR_PROPOSAL] += 1   # the call failed - no verdict was given
+                continue
+            stat.by_outcome[outcome_for(proposal, label)] += 1
         if _enr_columns:
             for grp, cols in _enr_groups.items():
                 m = sum(1 for c in cols if str(out_row.get(c) or "").strip())
@@ -592,7 +733,7 @@ def process(
     try:
         if concurrency <= 1:
             for i in range(done, len(rows)):
-                save_result(_process_row(i, rows[i], tasks, default_country,
+                save_result(_process_row(i, rows[i], tasks,
                                              client, bucket, rate_safety, on_call, key_gate, cache))
                 if progress:
                     progress(i + 1, len(rows), stat)
@@ -600,7 +741,7 @@ def process(
         else:
             with ThreadPoolExecutor(max_workers=concurrency) as ex:
                 futures = {i: ex.submit(_process_row, i, rows[i], tasks,
-                                        default_country, client, bucket, rate_safety, on_call, key_gate, cache)
+                                        client, bucket, rate_safety, on_call, key_gate, cache)
                            for i in range(done, len(rows))}
                 # we write strictly in order (for resume); computation is parallel
                 for i in range(done, len(rows)):
@@ -768,7 +909,7 @@ class _RespCache:
             ev.set()
 
 
-def _process_row(i, row, tasks, default_country, client, bucket, rate_safety, on_call=None, key_gate=None, cache=None):
+def _process_row(i, row, tasks, client, bucket, rate_safety, on_call=None, key_gate=None, cache=None):
     """Process one row (all services).
     Returns (index, output, calls, errors, results, dedup_saved)."""
     out_row: dict[str, object] = dict(row)
@@ -781,10 +922,16 @@ def _process_row(i, row, tasks, default_country, client, bucket, rate_safety, on
             out_row.update(_empty_outputs(u, row, i18n.t("res_not_filled")))
             continue
         query = u.endpoint.query_from_row(row, u.field_map)
+        # Send the country as part of the query, not as `dataSource`.
+        #
+        # `dataSource` would RESTRICT the search to that country. Putting the country
+        # in the query instead leaves every source available and gives the API a value
+        # it can verify - so it can correct a wrong country and return it in the
+        # requested `countryFormat`. Only used when the file maps no country column
+        # of its own; then the value in the data wins, row by row.
+        if u.country and u.endpoint.takes_country and "country" not in query:
+            query["country"] = u.country
         options = dict(u.options or u.endpoint.options)
-        if (u.fill_country and default_country and u.endpoint.key in ("location", "company")
-                and "country" in [p.api_field for p in u.endpoint.fields] and "country" not in query):
-            query["country"] = default_country
 
         # Per-run deduplication: the same (service+input+options) is queried from the API only once.
         key = _cache_key(u.endpoint.path, query, options) if cache is not None else None
