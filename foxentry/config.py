@@ -31,9 +31,27 @@ def resource_dir() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def in_app_bundle() -> bool:
+    """Are we running from inside a macOS .app? Then `sys.executable` is
+    `Foxentry Data Cleaner.app/Contents/MacOS/…`."""
+    return sys.platform == "darwin" and ".app/Contents/MacOS/" in str(Path(sys.executable).resolve())
+
+
 def data_dir() -> Path:
     """Writable location for config.env, logs/, input/, output/, session.
-    Frozen: next to the exe (portable). From source: the project root."""
+
+    Next to the executable, which keeps the Windows and Linux builds portable: copy the file
+    onto a stick and the whole working folder travels with it.
+
+    A macOS .app is the exception. Its executable lives inside the bundle, and the bundle is
+    signed: writing into it breaks the signature, and in /Applications the user has no right
+    to write there at all. So the app keeps its folder in Documents, where the user can
+    actually find their input and output files.
+    """
+    if in_app_bundle():
+        home = Path.home() / "Documents" / "Foxentry Data Cleaner"
+        home.mkdir(parents=True, exist_ok=True)
+        return home
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent   # portable: next to the exe
     return Path(__file__).resolve().parent.parent

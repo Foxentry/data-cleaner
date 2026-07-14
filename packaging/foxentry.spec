@@ -16,6 +16,18 @@ def R(*parts):
     return os.path.join(ROOT, *parts)
 
 
+def _version_from_package() -> str:
+    """The one place the version lives. Repeating it here is how SBOMs go stale."""
+    with open(R("foxentry", "__init__.py"), encoding="utf-8") as fh:
+        for line in fh:
+            if line.startswith("__version__"):
+                return line.split('"')[1]
+    raise SystemExit("no __version__ in foxentry/__init__.py")
+
+
+_APP_VERSION = _version_from_package()
+
+
 # Read-only bundled resources. Layout of this project:
 #   - wizard.html + assets/ live INSIDE the foxentry/ package
 #   - the HTML guides (documentation, setup-guide, log-viewer) live in docs/
@@ -69,7 +81,13 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,                                   # UPX can trip antivirus heuristics; leave off
-    console=True,                                # small console prints the localhost URL + errors
+    # No console window on the desktop platforms: the browser IS the window, and a black box
+    # sitting behind it is what people close by accident or leave running for days. A windowed
+    # build has no stdout, so `run.py` sends output to logs/app.log and puts a native dialog up
+    # if the app cannot start - a crash with no console is otherwise a window that never opens.
+    # `--cli` attaches to the console it was launched from.
+    # Linux has no bundle and is run from a terminal, so it keeps its console.
+    console=not (sys.platform.startswith("win") or sys.platform == "darwin"),
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
@@ -77,3 +95,32 @@ exe = EXE(
     version=_version,
     icon=_icon,
 )
+
+# macOS: wrap the executable in a .app bundle.
+#
+# The bare Unix binary we used to ship could not be double-clicked: a browser download strips
+# the execute bit, and Finder has nothing to do with an extensionless file. It needed a
+# terminal and `chmod +x`, which is not a desktop app. A bundle also lets the notarization
+# ticket be STAPLED to it - a loose binary cannot be stapled, so it needed Apple online on
+# first launch.
+#
+# The app writes nothing inside the bundle (that would break the signature and fail in
+# /Applications): `config.data_dir()` puts its folder in ~/Documents instead.
+if sys.platform == "darwin":
+    app = BUNDLE(
+        exe,
+        name="Foxentry Data Cleaner.app",
+        icon=_icon,
+        bundle_identifier="cz.avantro.foxentry.datacleaner",
+        version=_APP_VERSION,
+        info_plist={
+            "CFBundleShortVersionString": _APP_VERSION,
+            "CFBundleVersion": _APP_VERSION,
+            "NSHighResolutionCapable": True,
+            "LSMinimumSystemVersion": "11.0",
+            "NSHumanReadableCopyright": "Copyright 2026 AVANTRO s.r.o. Apache-2.0.",
+            # Not a background agent: it keeps a Dock icon, which is how the user quits it with
+            # Cmd+Q. The wizard also has a Quit button.
+            "LSUIElement": False,
+        },
+    )

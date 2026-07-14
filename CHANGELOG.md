@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-07-14
+
+### Added
+
+- **macOS ships as an app in a disk image.** Download `FoxentryDataCleaner-macos.dmg`, open it,
+  drag the app to Applications, double-click. That is the whole thing. 2.0.0 shipped a bare Unix
+  executable: a browser download strips its execute bit and Finder cannot open an extensionless
+  file, so it needed a terminal and `chmod +x`. The bare binary is still published for
+  command-line use.
+- **The notarization ticket is stapled** to the app and to the disk image, so Gatekeeper clears
+  them without asking Apple. A bare binary cannot be stapled, which is why 2.0.0 needed an
+  internet connection on first launch.
+- **The browser window is the app.** Close it and the app stops. The page tells the server it
+  is still open every couple of seconds; when that stops, so does the server. A reload is back
+  within a second and never trips it. There is no event that means "the user closed the window"
+  (a close and a reload look identical to the page), so a short grace period is what makes F5
+  safe.
+- **No console window on Windows and macOS.** The black box behind the browser is gone: people
+  closed it by accident or left it running for days. Output goes to `logs/app.log`, and a
+  failure to start puts up a native dialog rather than vanishing. `--cli` attaches to the
+  console it was launched from. Linux keeps its console: it has no bundle and is run from a
+  terminal anyway.
+- **A Quit button in the wizard.** The app is a local server, and it used to be stopped with
+  Ctrl+C in the console it prints to. A macOS app has no console. It works on every platform,
+  and it ends the black window on Windows that people used to leave running for days.
+
+### Changed
+
+- **The macOS app keeps its folder in `~/Documents/Foxentry Data Cleaner`** (`config.env`,
+  `input/`, `output/`, `logs/`). It cannot write inside the app bundle: that breaks the code
+  signature, and in `/Applications` it has no right to. Windows and Linux are unchanged - the
+  executable stays portable and keeps its folder next to itself.
+
+
 ## [2.0.0] - 2026-07-14
 
 This release makes the tool country-aware. It also corrects how results are counted: every
@@ -229,7 +263,8 @@ first.
 - TLS with certificate verification; the API key is stored only in the local `config.env` and
   is masked in logs.
 
-[Unreleased]: https://github.com/Foxentry/data-cleaner/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/Foxentry/data-cleaner/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/Foxentry/data-cleaner/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/Foxentry/data-cleaner/compare/v1.0.1...v2.0.0
 [1.0.1]: https://github.com/Foxentry/data-cleaner/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/Foxentry/data-cleaner/releases/tag/v1.0.0

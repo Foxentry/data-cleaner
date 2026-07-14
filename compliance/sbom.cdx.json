@@ -9,14 +9,14 @@
       {
         "vendor": "AVANTRO s.r.o.",
         "name": "manual",
-        "version": "2.0.0"
+        "version": "2.1.0"
       }
     ],
     "component": {
-      "bom-ref": "foxentry-data-cleaner@2.0.0",
+      "bom-ref": "foxentry-data-cleaner@2.1.0",
       "type": "application",
       "name": "foxentry-data-cleaner",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "supplier": {
         "name": "AVANTRO s.r.o.",
         "url": [
@@ -79,7 +79,7 @@
       "bom-ref": "pkg:pypi/et_xmlfile@2.0.0",
       "type": "library",
       "name": "et_xmlfile",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "purl": "pkg:pypi/et_xmlfile@2.0.0",
       "description": "A low-memory library for creating large XML files (vendored).",
       "licenses": [

@@ -106,6 +106,34 @@ def _save_run_summary(file: str, summary: dict) -> None:
         pass
 
 # last run state (local, single user)
+# The browser is the window. When it goes, the app goes.
+#
+# There is no event that means "the user closed the window": a close and a reload look exactly
+# the same to the page (`pagehide` fires for both). So the page says "still here" every couple
+# of seconds instead, and the server stops when the saying stops. A reload is back within a
+# second and never trips it; a closed window never comes back.
+#
+# The delay is not felt, because there is nothing left on screen to wait for: the console
+# window is gone in the windowed builds, so the process just ends.
+_PING_EVERY = 2.0          # the page pings this often
+_PING_GRACE = 4.0          # ... and this long without one means the window is gone
+_OPEN_GRACE = 120.0        # the browser has this long to appear at all (slow machines, no browser)
+
+_LAST_PING: float = 0.0
+
+
+def _watchdog(server, started: float) -> None:
+    while True:
+        time.sleep(1.0)
+        now = time.monotonic()
+        if _LAST_PING:
+            if now - _LAST_PING > _PING_GRACE:
+                break
+        elif now - started > _OPEN_GRACE:
+            break                       # the browser never arrived - do not linger forever
+    threading.Thread(target=server.shutdown, daemon=True).start()
+
+
 _RUN: dict = {"active": False, "done": 0, "total": 0, "by_flag": [],
               "calls": 0, "errors": 0, "finished": False, "ok": True,
               "outputs": [], "message": "", "run_time": 0.0, "jobs": []}
@@ -317,6 +345,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._schema(q.get("lang", [""])[0], q.get("country", [""])[0])
         if p == "/api/config":
             return self._json(config_mod.read_config_values())
+        if p == "/api/ping":
+            global _LAST_PING
+            _LAST_PING = time.monotonic()
+            return self._json({"ok": True})
         if p == "/api/progress":
             with _RUN_LOCK:
                 return self._json(dict(_RUN))
@@ -335,6 +367,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         if p == "/api/config":
             return self._save_config()
+        if p == "/api/quit":
+            return self._quit()
         if p == "/api/logs/clear":
             return self._json(self._delete_logs())
         if p == "/api/upload":
@@ -503,6 +537,24 @@ class Handler(BaseHTTPRequestHandler):
         # update the language for subsequent responses
         i18n.set_lang(values.get("LANGUAGE", "en"))
         self._json({"ok": True, "path": str(path)})
+
+    def _quit(self):
+        """Stop the server, from the interface.
+
+        The app is a local web server, and it used to be stopped with Ctrl+C in the console it
+        prints to. A macOS .app has no console, and on Windows the console window is a thing
+        people close by accident or leave running for days. So the wizard can say when it is
+        done, on every platform.
+
+        `shutdown()` blocks until the serve loop stops, and we are inside that loop right now:
+        it has to be called from another thread, after this response has been written.
+        """
+        self._json({"ok": True})
+        try:
+            self.wfile.flush()
+        except Exception:
+            pass
+        threading.Thread(target=self.server.shutdown, daemon=True).start()
 
     def _install_xlsx(self):
         """Install openpyxl: pinned version, wheel only, isolated into vendor/.
@@ -831,8 +883,12 @@ def start_server(port: int = 0, open_writer: bool = True) -> None:
             applaunch.open_ui(url, app_mode=config_mod.Config().ui_app_mode)
         except Exception:
             pass
+    if open_writer:
+        threading.Thread(target=_watchdog, args=(server, time.monotonic()), daemon=True).start()
+
     try:
-        server.serve_forever()
+        server.serve_forever()          # returns when the window closes, or /api/quit is called
+        print("\n  " + i18n.t("server_bye"))
     except KeyboardInterrupt:
         print("\n  " + i18n.t("server_bye"))
         server.shutdown()
