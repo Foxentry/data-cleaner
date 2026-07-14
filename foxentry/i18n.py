@@ -12,25 +12,35 @@ Language is set in the config file (LANGUAGE=en|cs).
 
 from __future__ import annotations
 
-DOSTUPNE_JAZYKY = ["en", "cs"]
+AVAILABLE_LANGUAGES = ["en", "cs"]
 LANGUAGE_NAMES = {"en": "English", "cs": "Čeština"}
 
-_AKTUALNI = "en"
+_CURRENT = "en"
 
 
 def set_lang(lang: str) -> None:
-    global _AKTUALNI
+    global _CURRENT
     lang = (lang or "en").lower()
-    _AKTUALNI = lang if lang in STRINGS else "en"
+    _CURRENT = lang if lang in STRINGS else "en"
 
 
 def get_lang() -> str:
-    return _AKTUALNI
+    return _CURRENT
+
+
+def all_labels(msg_id: str) -> set:
+    """Every translation of one string.
+
+    Used when a value written by an earlier run has to be recognised again (resume):
+    the file may have been written in another language than the one now selected. This
+    matches whole strings against the table - it never looks for words inside them.
+    """
+    return {table[msg_id] for table in STRINGS.values() if table.get(msg_id)}
 
 
 def t(msg_id: str, **kw) -> str:
-    tabulka = STRINGS.get(_AKTUALNI, STRINGS["en"])
-    text = tabulka.get(msg_id) or STRINGS["en"].get(msg_id) or msg_id
+    table = STRINGS.get(_CURRENT, STRINGS["en"])
+    text = table.get(msg_id) or STRINGS["en"].get(msg_id) or msg_id
     if kw:
         try:
             return text.format(**kw)
@@ -140,11 +150,32 @@ STRINGS: dict[str, dict[str, str]] = {
         "err_xls_unsupported": "The old .xls format is not supported. Open the file in Excel and save it as .xlsx or CSV (UTF-8).",
 
         # validation result labels
+        # Country of the data
+        "warn_not_covered": "{country}: {service} has no data for this country — the registers "
+                            "cover {covered}. Those rows come back invalid and still use credits.",
+        "warn_low_coverage": "{country}: {service} is built around {covered}. Data from elsewhere "
+                             "is still recognised, just less reliably.",
+        "cli_country_detected": "Country detected: {country} (from {reasons})",
+        "why_country": "a country column",
+        "why_phone": "phone prefixes",
+        "why_zip": "postal codes",
+        "why_company": "company names",
+        "why_email": "e-mail domains",
         "res_valid": "valid",
         "res_valid_sugg": "valid (suggestion available)",
         "res_valid_corr": "valid (corrected)",
         "res_invalid": "invalid",
         "res_corrected": "corrected",
+        "res_invalid_reformatted": "invalid (format fixed only)",
+        # Wording avoids plural agreement so it stays correct for any count.
+        # Report categories - what the chart groups by.
+        "cat_valid": "valid",
+        "cat_corrected": "corrected by Foxentry",
+        "cat_invalid": "invalid",
+        "cat_suggestion": "suggestion offered",
+        "cat_uncertain": "could not be verified",
+        "cat_error": "error",
+        "rep_overlap": "A value can be counted more than once — a partial correction is both corrected and invalid, and a valid value can come with a suggestion. The percentages are of all validated values.",
         "res_partial": "partially corrected",
         "res_invalid_sugg": "invalid (suggestion available)",
         "res_corrected_sugg": "corrected (suggestion available)",
@@ -236,7 +267,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "rep_outputs": "Output files",
         "rep_csv_desc": "results (CSV, UTF-8)",
         "rep_xlsx_desc": "results (Excel)",
-        "rep_updated_note": "Columns with the _updated suffix contain values after correction. The _proposal column is the technical code from Foxentry API.",
+        "rep_updated_note": "Columns with the _updated suffix contain values after correction. The _proposal column is the technical code from the Foxentry API - every number in this report is counted from it and from whether the value is valid after the correction, never from the translated text, so the figures do not depend on the language.",
         "rep_footer": "Generated locally. Your data did not leave this computer except for individual validation queries to api.foxentry.com.",
     },
 
@@ -326,11 +357,32 @@ STRINGS: dict[str, dict[str, str]] = {
         "file_load_failed": "Soubor se nepodařilo načíst:\n  {e}",
         "err_xls_unsupported": "Starý formát .xls není podporován. Otevřete soubor v Excelu a uložte jako .xlsx nebo CSV (UTF-8).",
 
+        # Country of the data
+        "warn_not_covered": "{country}: {service} pro tuto zemi nemá data — rejstříky pokrývají "
+                            "{covered}. Řádky vyjdou jako neplatné a přesto spotřebují kredity.",
+        "warn_low_coverage": "{country}: {service} je stavěná na {covered}. Údaje z jiných zemí se "
+                             "rozpoznají, ale méně spolehlivě.",
+        "cli_country_detected": "Rozpoznaná země: {country} (podle: {reasons})",
+        "why_country": "sloupce se zemí",
+        "why_phone": "telefonních předvoleb",
+        "why_zip": "PSČ",
+        "why_company": "názvů firem",
+        "why_email": "e-mailových domén",
         "res_valid": "platné",
         "res_valid_sugg": "platné (existuje návrh)",
         "res_valid_corr": "platné (opraveno)",
         "res_invalid": "neplatné",
         "res_corrected": "opraveno",
+        "res_invalid_reformatted": "neplatné (opraven jen formát)",
+        # Formulace bez skloňování, aby seděla pro libovolný počet.
+        # Kategorie v reportu — podle nich se seskupuje graf.
+        "cat_valid": "platné",
+        "cat_corrected": "opraveno Foxentry",
+        "cat_invalid": "neplatné",
+        "cat_suggestion": "nabídnut návrh",
+        "cat_uncertain": "nelze ověřit",
+        "cat_error": "chyba",
+        "rep_overlap": "Jedna hodnota se může počítat víckrát — částečná oprava je zároveň opravená i neplatná a platná hodnota může mít návrh. Procenta jsou ze všech ověřených hodnot.",
         "res_partial": "částečně opraveno",
         "res_invalid_sugg": "neplatné (existuje návrh)",
         "res_corrected_sugg": "opraveno (existuje návrh)",
@@ -419,7 +471,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "rep_outputs": "Výstupní soubory",
         "rep_csv_desc": "výsledky (CSV, UTF-8)",
         "rep_xlsx_desc": "výsledky (Excel)",
-        "rep_updated_note": "Sloupce s příponou _updated obsahují hodnoty po korekci. Sloupec _proposal je technický kód z Foxentry API.",
+        "rep_updated_note": "Sloupce s příponou _updated obsahují hodnoty po korekci. Sloupec _proposal je technický kód z Foxentry API — všechna čísla v tomto reportu se počítají z něj a z toho, zda je hodnota po opravě platná, nikdy z přeloženého textu, takže nezávisí na jazyce.",
         "rep_footer": "Vygenerováno lokálně. Data neopustila tento počítač kromě jednotlivých validačních dotazů na api.foxentry.com.",
     },
 }

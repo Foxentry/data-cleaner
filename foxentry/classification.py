@@ -21,6 +21,7 @@ import re
 from collections import Counter
 from typing import Any
 
+from . import countries as C
 from . import i18n
 from .endpoints import ENDPOINTS, SUBTYPES, TYPE_TO_KEY, _norm
 
@@ -113,8 +114,20 @@ def _digits(s: str) -> str:
     return re.sub(r"\D", "", s)
 
 
-def _is_zip(s: str) -> bool:
-    return bool(_RE_ZIP_CZSK.match(s) or _RE_ZIP_PL.match(s))
+def _is_zip(s: str, country: str | None = None) -> bool:
+    """
+    Does the value look like a postal code?
+
+    When we know where the data comes from we check that country's shape only.
+    Otherwise we accept any country we know - the old check knew CZ, SK and PL,
+    so every foreign postal code ("NW1 6XE") looked like plain text.
+    """
+    s = (s or "").strip()
+    if not s:
+        return False
+    if country:
+        return C.zip_matches(country, s)
+    return bool(C.countries_matching_zip(s))
 
 
 def _ico_valid(s: str) -> bool:
@@ -129,7 +142,7 @@ def _ico_valid(s: str) -> bool:
     return check == d[7]
 
 
-def _classify_value(s: str) -> str | None:
+def _classify_value(s: str, country: str | None = None) -> str | None:
     """One value -> best 'type/subtype' or '_letters_'/None."""
     s = s.strip()
     if not s:
@@ -145,7 +158,7 @@ def _classify_value(s: str) -> str | None:
         return "email/email"
     if _RE_DIC.match(s):
         return "company/vatNumber"
-    if _is_zip(s):
+    if _is_zip(s, country):
         return "location/zip"
     if _ico_valid(s):
         return "company/registrationNumber"
@@ -165,7 +178,7 @@ def _classify_value(s: str) -> str | None:
         return "company/name"
     if "," in s and re.search(r"\d{3}\s?\d{2}", s) and re.search(r"[A-Za-zÀ-ž]", s) and len(s) >= 12:
         return "location/full"
-    if _RE_HOUSENUM.match(s) and not _is_zip(s) and ("/" in s or "-" in s or re.search(r"\d\s*[a-zA-Z]$", s)):
+    if _RE_HOUSENUM.match(s) and not _is_zip(s, country) and ("/" in s or "-" in s or re.search(r"\d\s*[a-zA-Z]$", s)):
         return "location/number.full"
     if _RE_STREET_NUM.match(s) and re.search(r"[A-Za-zÀ-ž]", s) and re.search(r"\d", s):
         return "location/streetWithNumber"
@@ -213,7 +226,23 @@ def _resolve_letters(header_hint, samples) -> tuple[str | None, str | None, str]
     return None, None, i18n.t("cls_ambiguous")
 
 
-def suggest_candidates(samples, hint, max_n: int = 4):
+_RE_ADDRESS_HEADER = re.compile(
+    r"\b(address|addr|adresa|adres|street|ulice|ulica|line\s*\d|radek)\b", re.IGNORECASE)
+
+
+def _is_address_header(header: str | None) -> bool:
+    """Does the column name itself say "this is part of an address"?"""
+    return bool(header and _RE_ADDRESS_HEADER.search(header))
+
+
+def _address_line_no(header: str | None) -> int | None:
+    """The N of an "Address line N" column, if the header has one."""
+    match = re.search(r"line\s*(\d)", header or "", re.IGNORECASE)
+    return int(match.group(1)) if match else None
+
+
+def suggest_candidates(samples, hint, max_n: int = 4, country: str | None = None,
+                       header: str | None = None):
     """Liberal suggestion of the most likely (service, field) candidates for the picker.
     Looser than auto-mapping - it also offers less certain options, sorted by score.
     Returns [{service, field, label, score}] (service=endpoint key, field=api_field)."""
@@ -238,7 +267,7 @@ def suggest_candidates(samples, hint, max_n: int = 4):
             add_(hint[0], hint[1], 100)
 
     # 2) content - recognized formats (email, ZIP, IČO/DIČ, phone, address...)
-    labels = [l for l in (_classify_value(s) for s in samples) if l and l != "_letters_"]
+    labels = [l for l in (_classify_value(s, country) for s in samples) if l and l != "_letters_"]
     cnt = Counter(labels)
     for lab, c in cnt.items():
         if "/" in lab:
@@ -263,12 +292,30 @@ def suggest_candidates(samples, hint, max_n: int = 4):
     if letters >= max(1, 0.6 * n) and not labels and not suff:
         if hint and hint[0] in ("location", "name", "company"):
             add_(hint[0], hint[1], 50)
+        elif _is_address_header(header):
+            # "Address line 1/2/3" and friends: the column name already says this is
+            # an address, so offer address fields - not a first name.
+            #
+            # Which one depends on the line: the widely used convention is
+            # 1 = street, 2 = city, 3 = postal code. Content refines it - a line
+            # whose values carry house numbers is a street whatever its position.
+            line = _address_line_no(header)
+            numbered = sum(1 for s in samples if re.search(r"\d", s or ""))
+            street_like = numbered >= max(1, n / 2) or line == 1
+            if street_like:
+                add_("location", "streetWithNumber", 30)
+                add_("location", "street", 22)
+                add_("location", "city", 10)
+            else:
+                add_("location", "city", 30)
+                add_("location", "street", 18)
+                add_("location", "streetWithNumber", 10)
         else:
-            add_("company", "name", 8)
-            add_("name", "name", 6)
-            add_("name", "surname", 5)
-            add_("location", "city", 5)
-            add_("location", "street", 4)
+            add_("name", "name", 8)
+            add_("name", "surname", 7)
+            add_("location", "city", 6)
+            add_("location", "street", 5)
+            add_("company", "name", 4)
 
     out = []
     for (typ, subtyp), w in sorted(score.items(), key=lambda x: -x[1])[:max_n]:
@@ -282,11 +329,17 @@ def suggest_candidates(samples, hint, max_n: int = 4):
 
 
 def classify_columns(header: list[str], rows: list[dict[str, str]],
-                       sample: int = 10) -> dict[str, Any]:
-    """Main entry point - classifies all columns by content."""
+                       sample: int = 10, country: str | None = None) -> dict[str, Any]:
+    """
+    Main entry point - classifies all columns by content.
+
+    `country` is where the data comes from. Knowing it keeps postal codes honest:
+    without it an id like "99898" happens to fit a German postal code, and the
+    column gets offered as a ZIP.
+    """
     columns = []
     # detect whether the header is actually data
-    header_as_data = sum(1 for h in header if _classify_value(h) not in (None, "_letters_"))
+    header_as_data = sum(1 for h in header if _classify_value(h, country) not in (None, "_letters_"))
     has_header = header_as_data < max(1, len(header) // 2)
 
     for idx, col in enumerate(header):
@@ -298,11 +351,11 @@ def classify_columns(header: list[str], rows: list[dict[str, str]],
             # RULE 1: empty column -> map nothing (nothing to validate or compare).
             columns.append({"columnIndex": idx, "columnName": col,
                             "reasoning": i18n.t("cls_empty"), "type": None, "subtype": None, "group": 1,
-                            "candidates": suggest_candidates(samples, hint)})
+                            "candidates": suggest_candidates(samples, hint, country=country, header=col)})
             continue
 
         # RULE 2: data present -> decide by CONTENT (and enough matching samples).
-        labels = [l for l in (_classify_value(s) for s in samples) if l]
+        labels = [l for l in (_classify_value(s, country) for s in samples) if l]
         cnt = Counter(labels)
         typ = subtyp = None
         reasoning = ""
@@ -350,7 +403,7 @@ def classify_columns(header: list[str], rows: list[dict[str, str]],
         # house-number shape) and mostly small numbers -> this distinguishes it from amounts (which have no slash).
         # Confirmed only in the 2nd pass, and only if a street/address is in the table.
         if typ in (None, "location"):
-            shaped = sum(1 for s in samples if _classify_value(s) == "location/number.full")
+            shaped = sum(1 for s in samples if _classify_value(s, country) == "location/number.full")
             bareint = sum(1 for s in samples if re.fullmatch(r"\d{1,4}", s))
             if shaped >= 1 and (shaped + bareint) >= max(2, 0.6 * len(samples)):
                 ctx["maybe_housenum"] = True
@@ -386,7 +439,7 @@ def classify_columns(header: list[str], rows: list[dict[str, str]],
         columns.append({"columnIndex": idx, "columnName": col,
                         "reasoning": reasoning or i18n.t("cls_none"),
                         "type": typ, "subtype": subtyp, "group": 1, "_ctx": ctx,
-                        "candidates": suggest_candidates(samples, hint)})
+                        "candidates": suggest_candidates(samples, hint, country=country, header=col)})
 
     _context_pass(columns)
     for c in columns:

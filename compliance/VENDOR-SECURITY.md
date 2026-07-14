@@ -1,6 +1,6 @@
 # Vendor Security Questionnaire — Foxentry Data Cleaner
 
-Pre-filled answers for supplier/security reviews. Version 1.0.0.
+Pre-filled answers for supplier/security reviews. Version 1.1.0.
 
 ### Hosting & architecture
 Locally run desktop tool. It starts a small web server bound **only** to `127.0.0.1`

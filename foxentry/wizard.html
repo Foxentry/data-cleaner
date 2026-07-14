@@ -38,6 +38,11 @@
   .brand{display:flex;align-items:center;gap:.55rem;font-weight:700;font-size:1rem;color:var(--ink);justify-self:start;text-decoration:none}
   .logo{height:26px;width:auto;flex:0 0 auto}
   .brandmark{font-weight:800;font-size:1.18rem;color:var(--fox);letter-spacing:-.02em;line-height:1}
+  .cdet{background:#f1f6ff;border:1px solid #d6e4ff;border-radius:8px;padding:.6rem .8rem;margin-bottom:.9rem;font-size:.92rem}
+  .crow{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:.4rem 0}
+  .crow select{min-width:280px;padding:.45rem .6rem}
+  .chint{color:#6b7280;font-size:.86rem;margin-top:.35rem}
+  .cwarn{margin-top:.8rem;background:#fff8ed;border:1px solid #fcd9a5;border-radius:8px;padding:.6rem .8rem;font-size:.9rem;color:#8a5a00}
   .steps{display:flex;align-items:center;gap:.1rem;justify-self:center;flex-wrap:nowrap}
   .step{display:flex;align-items:center;gap:.55rem;color:#808189;font-size:.9rem;padding:.2rem .35rem;white-space:nowrap;font-weight:700}
   .step .n{width:2rem;height:2rem;border-radius:50%;border:2px solid var(--divider);display:grid;place-items:center;font-size:.85rem;font-weight:700;background:var(--card);color:#808189;flex:0 0 auto}
@@ -442,7 +447,18 @@
 <script>
 const T = {
   en:{
-    s_file:"File", s_map:"Columns", s_set:"Settings", s_sum:"Order",
+    s_file:"File", s_map:"Columns", s_country:"Country", s_set:"Settings", s_sum:"Order",
+    c_country_title:"Where is this data from?",
+    c_country_sub:"Foxentry searches the data sources for this country. Picking the right one gives better matches — and tells you up front which services do not cover it.",
+    c_detected:"Detected from your file:",
+    why_country:"a country column", why_phone:"phone prefixes", why_zip:"postal codes",
+    why_company:"company names", why_email:"e-mail domains",
+    c_country_label:"Country of the data",
+    c_country_mixed:"Mixed / several countries",
+    c_country_hint:"Used where the data allows it.",
+    c_effect_lookup:"Address and company lookups will be limited to this country.",
+    c_effect_prefix:"Phone numbers written without a prefix will be tried against this country first.",
+    c_country_hint_mixed:"Every country will be searched. Matches may be less accurate.",
     title_file:"Select a file to clean", lead_file:"Pick a file from the input folder or drop one here.",
     title_map:"Match the columns you want to validate", pair_with:"Pair with Foxentry",
     lead_map:"Each card is one column from your file. Pick the Foxentry service and field; group columns that form one record (e.g. street + city + ZIP).",
@@ -493,6 +509,10 @@ const T = {
     gen_locally:"Generated locally. Your data did not leave this computer except for individual validation queries to api.foxentry.com.",
     resume_note:"You can close this window at any time \u2014 when you run the app again, validation resumes exactly where it stopped.",
     rep_title:"Validation report", rep_file:"File", dl_db:"Download database",
+    // Result categories - the same wording as the HTML report (foxentry/i18n.py: cat_*, rep_overlap).
+    cat_valid:"valid", cat_corrected:"corrected by Foxentry", cat_invalid:"invalid",
+    cat_suggestion:"suggestion offered", cat_uncertain:"could not be verified", cat_error:"error",
+    rep_overlap:"A value can be counted more than once \u2014 a partial correction is both corrected and invalid, and a valid value can come with a suggestion. The percentages are of all validated values.",
     rep_value_title:"Foxentry value", rep_in_err:"Input error rate", rep_out_err:"Output error rate", rep_rescued:"Data rescued", rep_enriched_kpi:"Data points added", rep_enrich_title:"Enriched data (per service)", rep_enrich_unit:"data points",
     rep_value_summary:"Foxentry lowered the data error rate from {inp} % to {out} % — it automatically fixed {n} records ({pct} %) that would otherwise stay wrong.",
     rep_value_clean:"Your data was already clean — no errors to fix on input.",
@@ -504,7 +524,18 @@ const T = {
     revalidate:"Re-validate this file", new_file:"Validate a new file"
   },
   cs:{
-    s_file:"Soubor", s_map:"Sloupce", s_set:"Nastavení", s_sum:"Objednávka",
+    s_file:"Soubor", s_map:"Sloupce", s_country:"Země", s_set:"Nastavení", s_sum:"Objednávka",
+    c_country_title:"Odkud jsou tato data?",
+    c_country_sub:"Foxentry bude hledat v datech této země. Správná volba dá přesnější výsledky — a rovnou uvidíte, které služby ji nepokrývají.",
+    c_detected:"Rozpoznáno ze souboru:",
+    why_country:"sloupce se zemí", why_phone:"telefonních předvoleb", why_zip:"PSČ",
+    why_company:"názvů firem", why_email:"e-mailových domén",
+    c_country_label:"Země dat",
+    c_country_mixed:"Smíšená / více zemí",
+    c_country_hint:"Použije se tam, kde to data dovolí.",
+    c_effect_lookup:"Ověřování adres a firem se omezí na tuto zemi.",
+    c_effect_prefix:"U čísel bez předvolby se nejdřív zkusí předvolba této země.",
+    c_country_hint_mixed:"Bude se hledat ve všech zemích. Výsledky mohou být méně přesné.",
     title_file:"Vyberte soubor k pročištění", lead_file:"Vyberte soubor ze složky input nebo ho sem přetáhněte.",
     title_map:"Spárujte sloupce, které chcete validovat", pair_with:"Spárujte s Foxentry",
     lead_map:"Každá karta je jeden sloupec z vašeho souboru. Vyberte službu a pole Foxentry; sloupce tvořící jeden záznam (např. ulice + obec + PSČ) dejte do stejné skupiny.",
@@ -555,6 +586,9 @@ const T = {
     gen_locally:"Vygenerováno lokálně. Vaše data neopustila tento počítač kromě jednotlivých validačních dotazů na api.foxentry.com.",
     resume_note:"Okno můžete kdykoli zavřít \u2014 po opětovném spuštění aplikace validace naváže přesně tam, kde skončila.",
     rep_title:"Report validace", rep_file:"Soubor", dl_db:"Stáhnout databázi",
+    cat_valid:"platné", cat_corrected:"opraveno Foxentry", cat_invalid:"neplatné",
+    cat_suggestion:"nabídnut návrh", cat_uncertain:"nelze ověřit", cat_error:"chyba",
+    rep_overlap:"Jedna hodnota se může počítat víckrát \u2014 částečná oprava je zároveň opravená i neplatná a platná hodnota může mít návrh. Procenta jsou ze všech ověřených hodnot.",
     rep_value_title:"Přínos Foxentry", rep_in_err:"Chybovost na vstupu", rep_out_err:"Chybovost na výstupu", rep_rescued:"Zachráněno dat", rep_enriched_kpi:"Doplněných údajů", rep_enrich_title:"Doplněná data (podle služby)", rep_enrich_unit:"údajů",
     rep_value_summary:"Foxentry snížil chybovost dat z {inp} % na {out} % \u2014 automaticky opravil {n} záznamů ({pct} %), které by jinak zůstaly chybné.",
     rep_value_clean:"Vaše data byla už čistá \u2014 na vstupu nebylo co opravovat.",
@@ -577,9 +611,10 @@ const OVERLAY_ICON='<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="cur
 
 const state={services:[],files:[],file:null,header:[],rows:[],total:0,encoding:"",
   mapping:[],settings:{},scope:"manual",limit:null,test_sample:5,has_key:false,canRun:true,step:0,config:{},
-  hasHeaderRow:true,session:{files:{}},currency:"CZK",estimate:null,xlsxNeeded:null,logRun:false,allowPip:true};
+  hasHeaderRow:true,session:{files:{}},currency:"CZK",estimate:null,xlsxNeeded:null,logRun:false,allowPip:true,
+  country:null,detected:null,countries:[],coverage:[],schemaCountry:undefined,settingsCountry:undefined};
 
-const STEP_KEYS=["s_file","s_map","s_set","s_sum"];
+const STEP_KEYS=["s_file","s_map","s_country","s_set","s_sum"];
 async function api(path,opts){const r=await fetch(path,opts);return r.json();}
 async function resumeRun(res){
   const m=document.getElementById("main");
@@ -593,14 +628,16 @@ async function resumeRun(res){
     ${banner}<div class="infobox">${tr("resume_note")}</div>`;
   m.appendChild(c);
   const d=await api("/api/run",{method:"POST",headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({file:state.file,mapping:mappedPayload(),settings:state.settings,scope:state.scope,limit:state.limit,hasHeader:state.hasHeaderRow,log:state.logRun})});
-  if(!d.ok){ if((d.error||"").indexOf("running")>=0){pollRun();return;} go(3);return; }
+    body:JSON.stringify({file:state.file,mapping:mappedPayload(),settings:state.settings,scope:state.scope,limit:state.limit,hasHeader:state.hasHeaderRow,country:state.country,log:state.logRun})});
+  if(!d.ok){ if((d.error||"").indexOf("running")>=0){pollRun();return;} go(4);return; }
   pollRun();
 }
 function renderReport(p){
   const m=document.getElementById("main");
-  const by=p.by_result||{};
-  const totalRes=Object.values(by).reduce((a,b)=>a+b,0)||1;
+  // The bars come from the server already counted (report.flag_counts) - the same numbers
+  // the HTML report shows. Nothing here counts anything, and nothing reads a label's words.
+  const flags=p.by_flag||[];
+  const maxV=flags.reduce((a,b)=>Math.max(a,b.count),0)||1;
   let kpis=`<div class="vr-kpis">
     <div class="vr-kpi"><b>${p.done||0}</b><span>${tr("lbl_rows")}</span></div>
     <div class="vr-kpi"><b>${p.calls||0}</b><span>${tr("lbl_api_calls")}</span></div>
@@ -609,8 +646,9 @@ function renderReport(p){
   </div>`;
   let val=(p.jobs&&p.jobs.length)?`<div class="vr-val">${tr("validations_label")} ${p.jobs.map(esc).join(", ")}</div>`:"";
   let bars="";
-  Object.keys(by).sort((a,b)=>by[b]-by[a]).forEach(k=>{const pc=Math.round(1000*by[k]/totalRes)/10;
-    bars+=`<div class="vr-bar"><div>${esc(k)}</div><div class="vr-track"><div class="vr-fill" style="width:${pc}%;background:${colorForResult(k)}"></div></div><div class="vr-barval"><b>${by[k]}</b> <span class="pc">(${pc} %)</span></div></div>`;});
+  flags.forEach(f=>{const w=Math.max(2,Math.round(100*f.count/maxV));
+    bars+=`<div class="vr-bar"><div>${esc(tr("cat_"+f.flag))}</div><div class="vr-track"><div class="vr-fill" style="width:${w}%;background:${esc(f.color)}"></div></div><div class="vr-barval"><b>${f.count}</b> <span class="pc">(${f.pct} %)</span></div></div>`;});
+  if(bars){bars+=`<div class="vr-note">${esc(tr("rep_overlap"))}</div>`;}
   const outs=p.outputs||[];
   const dbFile=outs.find(o=>/\.xlsx$/i.test(o))||outs.find(o=>/_result\.csv$/i.test(o))||outs[0]||"";
   let files="";
@@ -683,14 +721,14 @@ async function init(){
     await selectFile(lf,true);
     if(d.resume.scope) state.scope=d.resume.scope;
     if(d.resume.limit) state.limit=d.resume.limit;
-    state.step=3; renderSteps();
+    state.step=4; renderSteps();
     if(d.resume.has_key){ resumeRun(d.resume); return; }
     render(); return;
   }
   // finished validation -> straight to the report + options (new file / re-validate)
   if(d.last_report && lf && state.files.includes(lf)){
     await selectFile(lf,true);
-    state.file=lf; state.step=3; renderSteps();
+    state.file=lf; state.step=4; renderSteps();
     renderReport(d.last_report); return;
   }
   // otherwise restore the last file if one exists
@@ -725,16 +763,22 @@ async function setLang(l){
   lang=l;
   await syncCurrency();
   // The schema (service names, fields, examples, settings) is localized by the server -> fetch it in the new language.
-  try{const d=await api("/api/schema?lang="+encodeURIComponent(l));if(d&&d.ok&&d.services)state.services=d.services;}catch(e){}
+  try{const d=await api("/api/schema?lang="+encodeURIComponent(l)+"&country="+encodeURIComponent(state.country||""));if(d&&d.ok&&d.services){state.services=d.services;state.countries=d.countries||state.countries;}}catch(e){}
   applyT();renderSteps();render();
+}
+function visibleSteps(){
+  // The country step is dropped from the bar entirely when the mapping does not
+  // need it, so the user is not numbered through a step they will never see.
+  return STEP_KEYS.map((k,i)=>({key:k,idx:i})).filter(s=>s.idx!==2||countryNeeded());
 }
 function renderSteps(){
   const el=document.getElementById("steps"); el.innerHTML="";
-  STEP_KEYS.forEach((k,i)=>{
-    if(i)el.insertAdjacentHTML("beforeend",`<span class="ln"></span>`);
+  visibleSteps().forEach((st,pos)=>{
+    const k=st.key, i=st.idx;
+    if(pos)el.insertAdjacentHTML("beforeend",`<span class="ln"></span>`);
     const d=document.createElement("div");
     d.className="step"+(i===state.step?" active":"")+(i<state.step?" done":"");
-    d.innerHTML=`<span class="n">${i<state.step?"\u2713":i+1}</span><span>${tr(k)}</span>`;
+    d.innerHTML=`<span class="n">${i<state.step?"\u2713":pos+1}</span><span>${tr(k)}</span>`;
     if(i<state.step)d.style.cursor="pointer",d.onclick=()=>go(i);
     el.appendChild(d);});
 }
@@ -750,8 +794,9 @@ function render(){
   document.body.classList.toggle("step-cols",state.step===1);
   if(state.step===0)return renderFile(m);
   if(state.step===1)return renderMap(m);
-  if(state.step===2)return renderSet(m);
-  if(state.step===3)return renderSummary(m);
+  if(state.step===2){ loadSchema().then(()=>renderCountry(m)); return; }
+  if(state.step===3)return renderSet(m);
+  if(state.step===4)return renderSummary(m);
 }
 
 async function saveSession(){
@@ -849,6 +894,15 @@ async function selectFile(f,restore){
   state.xlsxNeeded=null;
   state.header=d.header;state.rows=d.rows;state.total=d.total;state.encoding=d.encoding;state.hasHeaderRow=d.hasHeaderRow;
   state.suggested_settings=d.suggested_settings||{};
+  state.detected=d.detected_country||null;
+  state.countries=d.countries||[];
+  state.coverage=d.coverage_warnings||[];
+  state.country=(state.detected&&state.detected.country)||null;
+  state.schemaCountry=undefined; state.settingsCountry=undefined;
+  // The column picker already shows examples ("Street + number - 221B Baker Street"),
+  // and it runs BEFORE the country step - so load the schema for the country we just
+  // detected, otherwise the picker would keep showing Czech samples.
+  await loadSchema();
   if(restore&&saved&&saved.mapping&&saved.mapping.length){
     state.mapping=saved.mapping; state.settings=saved.settings||{}; state.scope=saved.scope||"manual"; state.limit=saved.limit||null;
     toast(tr("restored"));
@@ -861,6 +915,61 @@ async function selectFile(f,restore){
 
 /* ---------- step 1: columns ---------- */
 function svcById(id){return state.services.find(s=>s.service===id);}
+
+// Which mapped groups actually care about the country?
+//
+//  * services that take a country in the query (addresses, companies) - the API
+//    verifies it and can correct it;
+//  * phone numbers written WITHOUT an international prefix - the API tries the
+//    preferred prefixes in order, and that order comes from the country.
+//
+// A group that maps its own country column already carries it per row, and phone
+// numbers that all start with "+" need no guessing. In those cases the step would
+// change nothing, so it is skipped rather than shown and ignored.
+function usesCountry(service){const sc=svcById(service);return !!(sc&&sc.takes_country);}
+
+function columnValues(column){
+  const i=state.header.indexOf(column);
+  if(i<0) return [];
+  return (state.rows||[]).map(r=>String(r[i]==null?"":r[i]).trim()).filter(Boolean);
+}
+function phoneNeedsPrefix(fields, columns){
+  if(fields.has("prefix")) return false;      // the prefix comes from its own column
+  const col=columns.get("number");
+  if(!col) return false;
+  const values=columnValues(col);
+  if(!values.length) return false;
+  return values.some(v=>!v.startsWith("+"));  // at least one number the API must guess for
+}
+
+function countryEffects(){
+  // Say what the choice will actually change, rather than a blanket sentence that
+  // is wrong half the time (a phone-only file has nothing "limited to a country").
+  const groups=countryGroups();
+  const out=[];
+  if(Object.values(groups).some(g=>g.service!=="phone"&&usesCountry(g.service)&&!g.fields.has("country")))
+    out.push(tr("c_effect_lookup"));
+  if(Object.values(groups).some(g=>g.service==="phone"&&phoneNeedsPrefix(g.fields,g.columns)))
+    out.push(tr("c_effect_prefix"));
+  return out;
+}
+
+function countryGroups(){
+  const groups={};
+  state.mapping.filter(m=>m.service&&m.field&&m.column).forEach(m=>{
+    const k=m.service+"|"+(m.group||1);
+    const g=(groups[k]=groups[k]||{service:m.service,fields:new Set(),columns:new Map()});
+    g.fields.add(m.field); g.columns.set(m.field,m.column);
+  });
+  return groups;
+}
+
+function countryNeeded(){
+  return Object.values(countryGroups()).some(g=>{
+    if(g.service==="phone") return phoneNeedsPrefix(g.fields,g.columns);
+    return usesCountry(g.service) && !g.fields.has("country");
+  });
+}
 function fieldLabel(mp){const s=svcById(mp.service);if(!s)return '';const f=s.fields.find(f=>f.field===mp.field);return f?f.label:'';}
 function colorMap(){const m={};let n=0;state.mapping.forEach(mp=>{if(mp.service&&mp.field){const k=mp.service+'|'+(mp.group||1);if(!(k in m))m[k]=PALETTE[n++%PALETTE.length];}});return m;}
 function maxGroup(service){let mx=1;state.mapping.forEach(mp=>{if(mp.service===service)mx=Math.max(mx,mp.group||1);});return mx;}
@@ -1028,15 +1137,93 @@ function pick(i,svc,field){const mp=state.mapping[i];mp.service=svc||null;mp.fie
 function toSettings(){
   const mapped=state.mapping.filter(m=>m.service&&m.field);
   if(!mapped.length){toast(tr("no_map"));return;}
-  const used=[...new Set(mapped.map(m=>m.service))];
-  used.forEach(sv=>{if(!state.settings[sv]){state.settings[sv]={};
-    (svcById(sv).settings||[]).forEach(st=>state.settings[sv][st.id]=Array.isArray(st.default)?st.default.slice():st.default);
-    const sug=(state.suggested_settings||{})[sv]; if(sug)Object.keys(sug).forEach(k=>state.settings[sv][k]=Array.isArray(sug[k])?sug[k].slice():sug[k]);}});
   saveSession();
-  go(2);
+  if(countryNeeded()){go(2);return;}
+  // Nothing mapped here uses a country - skip straight to the settings. The detected
+  // country still orders the phone prefixes; it just is not worth a question.
+  initSettings();
 }
 
-/* ---------- step 2: settings ---------- */
+/* ---------- step 2: country of the data ---------- */
+async function loadSchema(){
+  // Examples, prefix order and coverage warnings all follow the country, so the
+  // schema is re-fetched whenever it changes - including the country we detected
+  // for the user, not only one they picked by hand.
+  if(state.schemaCountry===state.country) return;
+  const q="/api/schema?lang="+encodeURIComponent(lang)+"&country="+encodeURIComponent(state.country||"");
+  try{
+    const d=await api(q);
+    if(d&&d.ok){ state.services=d.services; state.countries=d.countries||state.countries; }
+  }catch(e){}
+  state.schemaCountry=state.country;
+}
+
+async function setCountry(code){
+  state.country = code || null;
+  await loadSchema();
+  renderCountry(document.getElementById("main"));
+}
+
+function initSettings(){
+  // Defaults are taken once the country is known, so a UK file starts from UK
+  // formats. Edits the user already made for the same country are kept.
+  const mapped=state.mapping.filter(m=>m.service&&m.field);
+  const used=[...new Set(mapped.map(m=>m.service))];
+  const fresh = state.settingsCountry!==state.country;
+  used.forEach(sv=>{
+    if(state.settings[sv] && !fresh) return;
+    state.settings[sv]={};
+    (svcById(sv).settings||[]).forEach(st=>{
+      state.settings[sv][st.id]=Array.isArray(st.default)?st.default.slice():st.default;});
+    const sug=(state.suggested_settings||{})[sv];
+    if(sug)Object.keys(sug).forEach(k=>state.settings[sv][k]=Array.isArray(sug[k])?sug[k].slice():sug[k]);
+  });
+  state.settingsCountry=state.country;
+  saveSession();
+  go(3);
+}
+
+function coverageFor(code){
+  const used=[...new Set(state.mapping.filter(m=>m.service).map(m=>m.service))];
+  return state.services.filter(sc=>used.includes(sc.service) && code
+      && (sc.covered||[]).length && !(sc.covered||[]).includes(code));
+}
+
+function renderCountry(m){
+  const det = state.detected||{};
+  const chosen = state.country;
+  const opts = (state.countries||[]).map(c=>
+    `<option value="${c.code}" ${c.code===chosen?"selected":""}>${c.flag} ${esc(c.name)} (${c.code})</option>`).join("");
+
+  let why = "";
+  if(det.country && det.reasons && det.reasons.length){
+    const reasons=det.reasons.map(r=>tr("why_"+r)).join(", ");
+    why = `<div class="cdet">${tr("c_detected")} <b>${esc(nameOf(det.country))}</b> — ${esc(reasons)}</div>`;
+  }
+
+  const warns = coverageFor(chosen).filter(sc=>sc.warn)
+    .map(sc=>`<div class="cwarn">\u26A0 ${esc(sc.warn)}</div>`).join("");
+
+  m.innerHTML=`<h1 data-t="c_country_title">${tr("c_country_title")}</h1>
+    <p class="sub" data-t="c_country_sub">${tr("c_country_sub")}</p>
+    <div class="card">
+      ${why}
+      <label class="crow"><span>${tr("c_country_label")}</span>
+        <select onchange="setCountry(this.value)">
+          <option value="" ${!chosen?"selected":""}>${tr("c_country_mixed")}</option>
+          ${opts}
+        </select>
+      </label>
+      <div class="chint">${chosen?countryEffects().map(esc).join(" ")||esc(tr("c_country_hint")):esc(tr("c_country_hint_mixed"))}</div>
+      ${warns}
+    </div>`;
+  const fa=document.createElement("div");fa.className="footer-actions";
+  fa.innerHTML=`<button class="btn--ghost" onclick="go(1)">${tr("back")}</button><button class="btn" onclick="initSettings()">${tr("next")}</button>`;
+  m.appendChild(fa);
+}
+function nameOf(code){const c=(state.countries||[]).find(x=>x.code===code);return c?c.name:code;}
+
+/* ---------- step 3: settings ---------- */
 var SEC_ICON={
   location:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.6 7-12a7 7 0 1 0-14 0c0 5.4 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>',
   company:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M8 7h2M8 11h2M8 15h2M14 7h2M14 11h2M14 15h2"/></svg>',
@@ -1059,7 +1246,7 @@ function renderSet(m){
   });
   wrap.innerHTML=h;m.appendChild(wrap);
   const fa=document.createElement("div");fa.className="footer-actions";
-  fa.innerHTML=`<button class="btn--ghost" onclick="go(1)">${tr("back")}</button><button class="btn" onclick="saveSession();go(3)">${tr("next")}</button>`;
+  fa.innerHTML=`<button class="btn--ghost" onclick="go(countryNeeded()?2:1)">${tr("back")}</button><button class="btn" onclick="saveSession();go(4)">${tr("next")}</button>`;
   m.appendChild(fa);
 }
 function renderSetting(sv,st){
@@ -1136,7 +1323,7 @@ function renderSummary(m){
 
 
   const fa=document.createElement("div");fa.className="footer-actions";
-  fa.innerHTML=`<button class="btn--ghost" onclick="go(2)">${tr("back")}</button><button class="btn btn--start" id="runbtn" onclick="startRun()"><span class="play">\u25B6</span>${tr("run_btn")}</button>`;
+  fa.innerHTML=`<button class="btn--ghost" onclick="go(3)">${tr("back")}</button><button class="btn btn--start" id="runbtn" onclick="startRun()"><span class="play">\u25B6</span>${tr("run_btn")}</button>`;
   m.appendChild(fa);
   loadEstimate();
 }
@@ -1181,7 +1368,7 @@ async function loadEstimate(){
   // height and just dim it slightly so the box does not jump.
   if(!state.estimate){sumSkeleton(true);}else{box.style.opacity=".55";}
   const d=await api("/api/estimate",{method:"POST",headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({file:state.file,mapping:mappedPayload(),settings:state.settings,scope:state.scope,limit:state.limit,hasHeader:state.hasHeaderRow})});
+    body:JSON.stringify({file:state.file,mapping:mappedPayload(),settings:state.settings,scope:state.scope,limit:state.limit,hasHeader:state.hasHeaderRow,country:state.country})});
   box.style.opacity="";
   if(!d.ok){box.innerHTML=`<div class="sum__head">${tr("sum_head")}</div><div class="errbox">${esc(d.error||"error")}</div>`;state.canRun=false;updateRunBtn();return;}
   state.estimate=d; state.canRun=true;
@@ -1247,12 +1434,6 @@ function setLimit(v){
   if(state.scope!=="manual"){setScope("manual");}else{saveSession();loadEstimate();}
 }
 function fmtDur(s){s=Math.round(s||0);if(s<60)return s+" s";const m=Math.floor(s/60),r=s%60;return m+" min"+(r?(" "+r+" s"):"");}
-function colorForResult(label){const n=(label||"").toLowerCase();
-  if(/error|chyb/.test(n))return"#f85149";
-  if(/inval|neplat/.test(n))return"#f0883e";
-  if(/correct|oprav|n\u00e1vrh|navrh|suggest/.test(n))return"#58a6ff";
-  if(/valid|platn/.test(n))return"#3fb950";
-  return"#8588a1";}
 function updateRunBtn(complete){
   const b=document.getElementById("runbtn");if(!b)return;
   if(complete){
@@ -1272,7 +1453,7 @@ async function startRun(){
   document.getElementById("runbtn").disabled=true;
   await saveSession();
   const d=await api("/api/run",{method:"POST",headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({file:state.file,mapping:mappedPayload(),settings:state.settings,scope:state.scope,limit:state.limit,hasHeader:state.hasHeaderRow,log:state.logRun})});
+    body:JSON.stringify({file:state.file,mapping:mappedPayload(),settings:state.settings,scope:state.scope,limit:state.limit,hasHeader:state.hasHeaderRow,country:state.country,log:state.logRun})});
   if(!d.ok){toast(d.error||"error");document.getElementById("runbtn").disabled=false;return;}
   pollRun();
 }
@@ -1343,37 +1524,26 @@ async function openConfig(){
   document.getElementById("cfgModal").classList.add("open");
 }
 function closeConfig(){document.getElementById("cfgModal").classList.remove("open");}
-const CM_NAMES={
- AD:["Andorra","Andorra"],AL:["Albania","Albánie"],AT:["Austria","Rakousko"],BA:["Bosnia & Herzegovina","Bosna a Hercegovina"],
- BE:["Belgium","Belgie"],BG:["Bulgaria","Bulharsko"],CH:["Switzerland","Švýcarsko"],CY:["Cyprus","Kypr"],
- CZ:["Czechia","Česko"],DE:["Germany","Německo"],DK:["Denmark","Dánsko"],ES:["Spain","Španělsko"],
- FR:["France","Francie"],GB:["United Kingdom","Spojené království"],GR:["Greece","Řecko"],HR:["Croatia","Chorvatsko"],
- HU:["Hungary","Maďarsko"],IS:["Iceland","Island"],IT:["Italy","Itálie"],LI:["Liechtenstein","Lichtenštejnsko"],
- LU:["Luxembourg","Lucembursko"],MC:["Monaco","Monako"],ME:["Montenegro","Černá Hora"],MK:["North Macedonia","Severní Makedonie"],
- MT:["Malta","Malta"],NL:["Netherlands","Nizozemsko"],PL:["Poland","Polsko"],RO:["Romania","Rumunsko"],
- RS:["Serbia","Srbsko"],SI:["Slovenia","Slovinsko"],SK:["Slovakia","Slovensko"],SM:["San Marino","San Marino"],
- VA:["Vatican City","Vatikán"],XK:["Kosovo","Kosovo"]};
-const CM_LOC=["AD","AL","AT","BA","BE","BG","CH","CY","CZ","DE","DK","ES","FR","GB","GR","HR","HU","IS","IT","LI","LU","MC","ME","MK","MT","NL","PL","RO","RS","SI","SK","SM","VA","XK"];
-const CM_ROWS=[
- {svc:"email",icon:"📧",ep:"/email/validate",ww:true},
- {svc:"phone",icon:"📞",ep:"/phone/validate",ww:true},
- {svc:"name",icon:"👤",ep:"/name/validate",codes:["CZ","SK"]},
- {svc:"location",icon:"📍",ep:"/location/validate",codes:CM_LOC},
- {svc:"company",icon:"🏢",ep:"/company/validate",codes:["CZ","SK","PL","HU"]}];
+const CM_ICON={email:"\u{1F4E7}",phone:"\u{1F4DE}",name:"\u{1F464}",location:"\u{1F4CD}",company:"\u{1F3E2}"};
+const CM_EP={email:"/email/validate",phone:"/phone/validate",name:"/name/validate",
+             location:"/location/validate",company:"/company/validate"};
 function cmFlag(cc){ return /^[A-Za-z]{2}$/.test(cc)?String.fromCodePoint(...[...cc.toUpperCase()].map(c=>0x1F1E6+c.charCodeAt(0)-65)):""; }
-function cmName(cc){ const n=CM_NAMES[cc]; return n?(lang==="cs"?n[1]:n[0]):cc; }
+function cmName(cc){ const c=(state.countries||[]).find(x=>x.code===cc); return c?c.name:cc; }
 function renderCountries(){
-  const rows=CM_ROWS.map(r=>{
-    const cov = r.ww
-      ? `<span class="ww">🌍 ${esc(tr("cm_worldwide"))}</span>`
-      : `<div class="cflags">`+r.codes.map(c=>`<span class="cchip"><span class="fl">${cmFlag(c)}</span> ${esc(cmName(c))} <span class="cc">${esc(c)}</span></span>`).join("")+`</div>`;
-    const epTxt = r.ep + (r.codes?` · ${r.codes.length} ${tr("cm_countries")}`:"");
-    return `<div class="cmrow"><div class="cmrow__h">${r.icon} ${esc(tr("cm_svc_"+r.svc))}<span class="ep">${esc(epTxt)}</span></div>${cov}</div>`;
+  // Coverage comes from the backend (one source of truth: the Foxentry OAS),
+  // so this list can no longer drift from what the app actually sends.
+  const rows=(state.services||[]).map(sc=>{
+    const codes=sc.covered||[];
+    const cov = !codes.length
+      ? `<span class="ww">\u{1F30D} ${esc(tr("cm_worldwide"))}</span>`
+      : `<div class="cflags">`+codes.map(c=>`<span class="cchip"><span class="fl">${cmFlag(c)}</span> ${esc(cmName(c))} <span class="cc">${esc(c)}</span></span>`).join("")+`</div>`;
+    const epTxt=(CM_EP[sc.service]||"")+(codes.length?` \u00B7 ${codes.length} ${tr("cm_countries")}`:"");
+    return `<div class="cmrow"><div class="cmrow__h">${CM_ICON[sc.service]||""} ${esc(sc.name)}<span class="ep">${esc(epTxt)}</span></div>${cov}</div>`;
   }).join("");
   document.getElementById("countriesBox").innerHTML=
-    `<div class="cm-head"><h2>${esc(tr("cm_title"))}</h2><button class="cm-x" onclick="closeCountries()" aria-label="close">✕</button></div>`+
+    `<div class="cm-head"><h2>${esc(tr("cm_title"))}</h2><button class="cm-x" onclick="closeCountries()" aria-label="close">\u2715</button></div>`+
     `<div class="cm-intro">${esc(tr("cm_intro"))}</div>`+rows+
-    `<div class="cm-foot">${esc(tr("cm_source"))} · <a href="https://foxentry.dev/v2.1/reference/supported-countries" target="_blank" rel="noopener">foxentry.dev</a></div>`;
+    `<div class="cm-source">${esc(tr("cm_source"))} <a href="https://foxentry.dev" target="_blank" rel="noopener">foxentry.dev</a></div>`;
 }
 function openCountries(){ renderCountries(); document.getElementById("countriesModal").classList.add("open"); }
 function closeCountries(){ document.getElementById("countriesModal").classList.remove("open"); }

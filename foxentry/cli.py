@@ -14,7 +14,9 @@ import time
 from pathlib import Path
 
 from . import config as config_mod
+from . import countries
 from . import i18n
+from .detect import coverage_warnings, detect_country
 from .api import AuthError, CreditError, FoxentryClient, Limits
 from .io_tables import FileError, StreamWriter, load_table
 from .processor import (
@@ -24,7 +26,7 @@ from .processor import (
     tasks_from_filename,
     process,
 )
-from .report import _format_time, create_report
+from .report import _format_time, create_report, flag_counts
 
 SUPPORTED = (".csv", ".tsv", ".txt", ".xlsx", ".xlsm")
 
@@ -102,24 +104,25 @@ def _describe_tasks(tasks: list[Task]) -> None:
                      countries=i18n.countries(u.endpoint.supported_countries)))
 
 
-def _find_probe_query(rows, tasks, done, limit, default_country):
+def _find_probe_query(rows, tasks, done, limit):
     end = limit if limit is not None else len(rows)
     for i in range(done, min(end, len(rows))):
         for u in tasks:
             if u.has_data(rows[i]):
-                q = u.endpoint.query_from_row(rows[i], u.field_map)
-                if u.endpoint.key in ("location", "company"):
-                    q.setdefault("country", default_country)
-                return u, q
+                query = u.endpoint.query_from_row(rows[i], u.field_map)
+                # The probe must look like the real thing, country included.
+                if u.country and u.endpoint.takes_country and "country" not in query:
+                    query["country"] = u.country
+                return u, query
     return None, None
 
 
-def _read_limits(client, tasks, rows, done, limit, default_country) -> Limits:
-    u, q = _find_probe_query(rows, tasks, done, limit, default_country)
+def _read_limits(client, tasks, rows, done, limit) -> Limits:
+    u, q = _find_probe_query(rows, tasks, done, limit)
     if u is None:
         return Limits()
     print("  " + i18n.t("probe"))
-    resp = client.validate(u.endpoint.path, q, dict(u.endpoint.options), custom_id="probe")
+    resp = client.validate(u.endpoint.path, q, dict(u.options or u.endpoint.options), custom_id="probe")
     return resp.limits
 
 
@@ -170,7 +173,20 @@ def main() -> int:
         print("\n  " + i18n.t("no_data"))
         return 1
 
-    tasks = tasks_from_filename(input_file.name, header, cfg.default_country)
+    detected = detect_country(rows)
+    country = detected.country if detected.is_confident else None
+    if country:
+        print("  " + i18n.t("cli_country_detected",
+                            country=countries.name(country, i18n.get_lang()),
+                            reasons=", ".join(i18n.t("why_" + r) for r in detected.reasons)))
+        for warn in coverage_warnings([u.endpoint.key for u in
+                                       tasks_from_filename(input_file.name, header)], country):
+            print("  ! " + i18n.t("warn_not_covered",
+                                  service=i18n.endpoint_name(warn["service"]),
+                                  country=countries.name(country, i18n.get_lang()),
+                                  covered=", ".join(warn["supported"])))
+
+    tasks = tasks_from_filename(input_file.name, header, country)
     if not tasks:
         print("\n  " + i18n.t("no_recognized_1"))
         print("  " + i18n.t("no_recognized_2"))
@@ -222,7 +238,7 @@ def main() -> int:
     client = FoxentryClient(cfg.api_key, cfg.api_url, cfg.api_version, cfg.timeout,
                             include_details=cfg.include_details, log_path=_logp)
     try:
-        limits = _read_limits(client, tasks, rows, done, limit, cfg.default_country)
+        limits = _read_limits(client, tasks, rows, done, limit)
     except AuthError as e:
         print("\n  " + i18n.t("cannot_connect", e=e))
         print("  " + i18n.t("check_key"))
@@ -266,7 +282,7 @@ def main() -> int:
     start = time.monotonic()
     result = process(
         client=client, input_file=input_file, output_csv=output_csv, rows=rows,
-        input_header=header, tasks=tasks, default_country=cfg.default_country,
+        input_header=header, tasks=tasks,
         rate_safety=cfg.rate_safety, row_limit=limit, resume=True,
         progress=_progress, make_xlsx=True, output_encoding=cfg.output_encoding,
         guard_csv=cfg.csv_guard, concurrency=cfg.concurrency,
@@ -278,8 +294,12 @@ def main() -> int:
     stat = result.stats
     print("  " + i18n.t("processed_rows", n=stat.total_rows))
     print("  " + i18n.t("api_calls", n=stat.api_calls))
-    for name, count in sorted(stat.by_result.items(), key=lambda x: -x[1]):
-        print(f"    {name:<34} {count}")
+    # The same bars the report and the wizard show - counted in one place, from the
+    # API's own codes. They overlap on purpose, so they do not add up to 100 %.
+    for bar in flag_counts(dict(stat.by_outcome)):
+        label = i18n.t("cat_" + bar["flag"])
+        print(f"    {label:<34} {bar['count']:>5}  ({bar['pct']} %)")
+    print("    " + i18n.t("rep_overlap"))
     if stat.errors:
         print("  " + i18n.t("comm_errors", n=stat.errors))
 

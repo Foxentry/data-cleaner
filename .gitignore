@@ -11,7 +11,7 @@ __pycache__/
 build/
 dist/
 
-# uložená session (poslední soubor, mapování, nastavení)
+# saved session (last file, mapping, settings)
 .foxentry-session.json
 
 # request logs (debug)
@@ -19,3 +19,6 @@ logs/*.jsonl
 logs/*.csv
 logs/app.log
 logs/*.log
+
+# release notes drafted for the GitHub Releases page - text to paste, not part of the source
+GITHUB-RELEASE-NOTES.md
