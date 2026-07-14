@@ -35,6 +35,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Launching the app again reopens its window** instead of starting a second copy. The window
+  is a browser window and browser windows get buried; relaunching is what a user does when one
+  goes missing, and it used to leave them with two servers on two ports, one holding a
+  half-finished run. The running copy is found by asking the port whether it is us, so a stale
+  file left by a crash is not believed.
+- **Cmd+Q stops the app the way the Quit button does**, rather than interrupting it in the
+  middle of writing a row.
+- **The macOS app can reach the API at all.** Every call failed with "unable to get local
+  issuer certificate": `ssl.create_default_context()` asks OpenSSL for the system roots, and a
+  frozen build on macOS gets none, because macOS keeps its roots in a keychain rather than a
+  file. The roots are now read from the keychain - both of them, so a company's TLS-inspecting
+  proxy is trusted too. Verification is never turned off.
 - **The macOS app starts at once.** It was packed as a single file, so every launch unpacked
   40 MB of interpreter into a temporary folder before the window appeared - about four seconds
   of an icon twitching in the Dock. Inside a bundle there is nothing to be portable about, so

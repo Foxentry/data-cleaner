@@ -21,7 +21,10 @@ No other connections; all work is local except Foxentry API calls.
 from __future__ import annotations
 
 import json
+import urllib.request
+import os
 import secrets
+import signal
 import threading
 import time
 import socketserver
@@ -366,6 +369,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._schema(q.get("lang", [""])[0], q.get("country", [""])[0])
         if p == "/api/config":
             return self._json(config_mod.read_config_values())
+        if p == "/api/whoami":
+            # Asked by a second launch: is this port ours, or did something else take it?
+            return self._json({"app": "foxentry-data-cleaner"})
 
         if p == "/api/progress":
             with _RUN_LOCK:
@@ -893,8 +899,67 @@ def _cleanup_logs(cfg) -> None:
         pass
 
 
+_INSTANCE_FILE = config_mod.DATA_ROOT / ".foxentry-running.json"
+
+
+def _running_instance() -> str | None:
+    """Is a copy of this app already running? Then its URL.
+
+    The window is a browser window, and a browser window gets buried behind other windows. When
+    it does, the user relaunches the app - that is what anyone does. Starting a second server
+    would leave them with two, on two ports, one of them holding a half-finished run.
+
+    So a second launch finds the first and reopens its window instead. The port is checked, not
+    trusted: a stale file from a crash points at nothing, or worse, at whatever took the port.
+    """
+    try:
+        record = json.loads(_INSTANCE_FILE.read_text(encoding="utf-8"))
+        port = int(record["port"])
+        token = str(record["token"])
+    except Exception:
+        return None
+
+    url = f"http://127.0.0.1:{port}/"
+    try:
+        request = urllib.request.Request(url + "api/whoami", headers={"X-Auth": token})
+        with urllib.request.urlopen(request, timeout=1.5) as response:
+            if json.loads(response.read()).get("app") == "foxentry-data-cleaner":
+                return url
+    except Exception:
+        pass
+    return None
+
+
+def _claim_instance(port: int) -> None:
+    try:
+        _INSTANCE_FILE.write_text(json.dumps({"port": port, "token": _TOKEN, "pid": os.getpid()}),
+                                  encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _release_instance() -> None:
+    try:
+        _INSTANCE_FILE.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
 def start_server(port: int = 0, open_writer: bool = True) -> None:
     global _PORT
+
+    # Already running? Give the user their window back and get out of the way.
+    if open_writer and not port:
+        existing = _running_instance()
+        if existing:
+            print("\n  " + i18n.t("already_running", url=existing))
+            try:
+                from . import applaunch
+                applaunch.open_ui(existing, app_mode=config_mod.Config().ui_app_mode)
+            except Exception:
+                pass
+            return
+
     cfg = config_mod.Config()
     i18n.set_lang(cfg.lang)
     applog.set_value(cfg.LOG_DIR, cfg.log_app)
@@ -904,6 +969,7 @@ def start_server(port: int = 0, open_writer: bool = True) -> None:
     server = LoopbackServer(("127.0.0.1", port), Handler)
     actual_port = server.server_address[1]
     _PORT = actual_port
+    _claim_instance(actual_port)
     url = f"http://127.0.0.1:{actual_port}/"
     print()
     print("  🦊  " + i18n.t("app_title"))
@@ -918,9 +984,22 @@ def start_server(port: int = 0, open_writer: bool = True) -> None:
     if open_writer:
         threading.Thread(target=_watchdog, args=(server, time.monotonic()), daemon=True).start()
 
+    # Cmd+Q, or a shutdown, or `kill`. Stop the way the Quit button stops, not by being killed
+    # in the middle of writing a row.
+    def _terminate(signum, frame):        # noqa: ARG001
+        threading.Thread(target=server.shutdown, daemon=True).start()
+
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        try:
+            signal.signal(sig, _terminate)
+        except (ValueError, OSError):
+            pass                          # not the main thread, or the platform says no
+
     try:
         server.serve_forever()          # returns when the window closes, or /api/quit is called
         print("\n  " + i18n.t("server_bye"))
     except KeyboardInterrupt:
         print("\n  " + i18n.t("server_bye"))
         server.shutdown()
+    finally:
+        _release_instance()

@@ -19,6 +19,8 @@ import json
 import os
 import platform
 import ssl
+import subprocess
+import sys
 import threading
 import time
 import urllib.error
@@ -35,6 +37,59 @@ def _try_json(s: str):
         return json.loads(s)
     except Exception:
         return None
+
+
+def _system_roots_pem() -> str:
+    """The operating system's trusted roots, as PEM.
+
+    macOS keeps them in a keychain, not in a file, and `security` is the tool that reads it.
+    Both keychains matter: the Apple roots, and the system one - which is where a company's IT
+    puts the root of a TLS-inspecting proxy. Miss that and the app fails inside exactly the
+    corporate networks it is written for.
+    """
+    keychains = [
+        "/System/Library/Keychains/SystemRootCertificates.keychain",
+        "/Library/Keychains/System.keychain",
+    ]
+    out = []
+    for keychain in keychains:
+        try:
+            found = subprocess.run(["/usr/bin/security", "find-certificate", "-a", "-p", keychain],
+                                   capture_output=True, text=True, timeout=20)
+            if found.returncode == 0 and "BEGIN CERTIFICATE" in found.stdout:
+                out.append(found.stdout)
+        except Exception:
+            continue
+    return "\n".join(out)
+
+
+def _ssl_context() -> ssl.SSLContext:
+    """A verifying TLS context that has certificates to verify against.
+
+    `ssl.create_default_context()` asks OpenSSL for the system roots. On Windows it gets the
+    Windows store and on Linux /etc/ssl, but a frozen build on macOS gets NOTHING: OpenSSL has
+    no path to look in, because macOS keeps its roots in a keychain. The store comes back empty
+    and every single HTTPS call fails with "unable to get local issuer certificate" - which is
+    exactly what happened to the first person who ran the macOS app.
+
+    So when the store is empty, we hand it the roots the operating system trusts. We never turn
+    verification off: a data-validation tool that would talk to anything answering on port 443
+    is worse than one that does not run.
+    """
+    context = ssl.create_default_context()
+    if context.cert_store_stats()["x509_ca"]:
+        return context                       # the platform gave us its roots
+
+    if sys.platform == "darwin":
+        roots = _system_roots_pem()
+        if roots:
+            context.load_verify_locations(cadata=roots)
+            return context
+
+    raise RuntimeError(
+        "No trusted certificate authorities are available on this system, so the connection to "
+        "the Foxentry API cannot be verified. Refusing to connect without verification."
+    )
 
 
 class FoxentryError(Exception):
@@ -99,8 +154,8 @@ class FoxentryClient:
         self._ua = user_agent or (
             f"FoxentryCleaner (Python/{platform.python_version()}; ApiReference/{api_version or 'latest'})"
         )
-        # Standard context with certificate verification (safe defaults).
-        self._ssl = ssl.create_default_context()
+        # Certificate verification is on, and stays on.
+        self._ssl = _ssl_context()
 
     # ------------------------------------------------------------------ public
 

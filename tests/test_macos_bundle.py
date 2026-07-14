@@ -115,3 +115,45 @@ def test_the_macos_app_is_not_packed_into_a_single_file() -> None:
     assert '_ONEDIR = sys.platform == "darwin"' in SPEC
     assert "COLLECT(" in SPEC
     assert "exclude_binaries=_ONEDIR" in SPEC
+
+
+API = (Path(__file__).resolve().parent.parent / "foxentry" / "api.py").read_text(encoding="utf-8")
+
+
+def test_tls_verification_is_never_turned_off() -> None:
+    """A frozen macOS build gets no certificates from OpenSSL - macOS keeps its roots in a
+    keychain - so every HTTPS call failed with "unable to get local issuer certificate". The
+    answer is to hand it the roots the system trusts, never to stop checking them."""
+    assert "_system_roots_pem" in API
+    assert "CERT_NONE" not in API
+    assert "check_hostname = False" not in API
+    assert "_unverified" not in API
+
+
+def test_the_corporate_proxy_root_is_included() -> None:
+    """A company that inspects TLS puts its root in the System keychain. Read only Apple's own
+    and the app fails inside exactly the networks it is written for."""
+    assert "/Library/Keychains/System.keychain" in API
+
+
+def test_a_second_launch_reopens_the_window() -> None:
+    """The window is a browser window, and a browser window gets buried. When it does, the user
+    relaunches the app - and a second server on a second port, one of them holding a
+    half-finished run, is not what they asked for."""
+    assert "_running_instance" in SERVER
+    assert '"/api/whoami"' in SERVER, "the port has to be checked, not trusted"
+
+
+def test_a_stale_instance_file_is_not_believed() -> None:
+    """After a crash the file points at a port that is gone - or at whatever took it since."""
+    assert "urlopen" in SERVER and "X-Auth" in SERVER
+
+
+def test_quitting_from_the_dock_is_not_a_kill() -> None:
+    """Cmd+Q should stop the app the way the Quit button does, not interrupt it mid-row."""
+    assert "signal.SIGTERM" in SERVER
+
+
+def test_the_macos_app_is_in_the_dock() -> None:
+    """A running app with no trace in the Dock has no trace anywhere."""
+    assert '"LSUIElement": False' in SPEC
