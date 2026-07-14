@@ -25,7 +25,8 @@ auditors and developers can always use **B**. Both work on **Windows, macOS and 
 1. Download the build for your operating system from the project **Releases**:
    - **Windows** → `FoxentryDataCleaner.exe`
    - **macOS** → `FoxentryDataCleaner-macos.dmg` (open it, drag the app to Applications,
-     double-click). `FoxentryDataCleaner-macos` is the bare binary, for the command line.
+     double-click). For the command line, the binary is inside the app:
+     `"/Applications/Foxentry Data Cleaner.app/Contents/MacOS/FoxentryDataCleaner" --cli`
    - **Linux** → `FoxentryDataCleaner-linux`
 2. (Optional but recommended) verify it before running:
    - **Signature** — *Windows:* right-click → *Properties* → *Digital Signatures* (issuer:

@@ -97,3 +97,12 @@ def test_the_app_can_be_quit_from_the_interface() -> None:
 @pytest.mark.parametrize("key", ["quit_title", "quit_confirm", "quit_done"])
 def test_the_quit_strings_exist_in_both_languages(key: str) -> None:
     assert WIZARD.count(f"{key}:") == 2
+
+
+def test_the_loopback_server_does_not_ask_the_network_who_it_is() -> None:
+    """`HTTPServer.server_bind()` resolves the host name, and on macOS that goes out over mDNS -
+    which makes macOS 15 ask the user to allow "finding devices on your local network". On a
+    tool that promises the data stays on the machine, that dialog is worse than a bug."""
+    assert "class LoopbackServer" in SERVER
+    assert "socketserver.TCPServer.server_bind" in SERVER
+    assert "ThreadingHTTPServer((" not in SERVER, "the stock server resolves the host name"

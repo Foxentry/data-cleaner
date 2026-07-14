@@ -14,8 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **macOS ships as an app in a disk image.** Download `FoxentryDataCleaner-macos.dmg`, open it,
   drag the app to Applications, double-click. That is the whole thing. 2.0.0 shipped a bare Unix
   executable: a browser download strips its execute bit and Finder cannot open an extensionless
-  file, so it needed a terminal and `chmod +x`. The bare binary is still published for
-  command-line use.
+  file, so it needed a terminal and `chmod +x`. The disk image is now the only macOS download;
+  for the command line the binary is inside the app:
+  `"/Applications/Foxentry Data Cleaner.app/Contents/MacOS/FoxentryDataCleaner" --cli`.
 - **The notarization ticket is stapled** to the app and to the disk image, so Gatekeeper clears
   them without asking Apple. A bare binary cannot be stapled, which is why 2.0.0 needed an
   internet connection on first launch.
@@ -32,8 +33,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Ctrl+C in the console it prints to. A macOS app has no console. It works on every platform,
   and it ends the black window on Windows that people used to leave running for days.
 
+### Fixed
+
+- **macOS no longer asks to "find devices on your local network".** The server binds to
+  `127.0.0.1` and never leaves it, but the standard library resolves the host name on bind
+  (`socket.getfqdn`), and on macOS that goes out over mDNS - which is what macOS 15 was asking
+  about. For a tool whose whole pitch is that the data stays on the machine, that dialog said
+  the opposite of the truth. There is nothing to look up on the loopback interface, so it is
+  not looked up.
+
 ### Changed
 
+- **The disk image explains itself.** The app on the left, the Applications folder on the
+  right, an arrow between them. A plain image is two icons in an empty window, and the first
+  person to open one ran the app from the disk image instead of installing it - which is the
+  one thing a disk image exists to prevent.
 - **The macOS app keeps its folder in `~/Documents/Foxentry Data Cleaner`** (`config.env`,
   `input/`, `output/`, `logs/`). It cannot write inside the app bundle: that breaks the code
   signature, and in `/Applications` it has no right to. Windows and Linux are unchanged - the

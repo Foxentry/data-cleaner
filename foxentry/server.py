@@ -24,6 +24,7 @@ import json
 import secrets
 import threading
 import time
+import socketserver
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
@@ -119,6 +120,24 @@ def _save_run_summary(file: str, summary: dict) -> None:
 # window. Switching to Excel for two minutes would have killed the app.
 _CLOSE_GRACE = 5.0         # a reload has this long to come back
 _OPEN_GRACE = 180.0        # the browser has this long to appear at all
+
+class LoopbackServer(ThreadingHTTPServer):
+    """The stock server asks the network who we are. We already know.
+
+    `HTTPServer.server_bind()` calls `socket.getfqdn(host)` to fill in `server_name`. On macOS
+    that resolution goes out over mDNS/Bonjour - and macOS 15 then asks the user to "allow
+    Foxentry Data Cleaner to find devices on your local network". For an app whose entire
+    pitch is that the data stays on the machine, that dialog is worse than a bug: it says the
+    opposite of the truth, and the honest answer to it is No.
+
+    We never leave the loopback interface, so there is nothing to look up. Bind, and skip it.
+    """
+
+    def server_bind(self) -> None:
+        socketserver.TCPServer.server_bind(self)      # NOT HTTPServer's - that is the one that resolves
+        self.server_name = "127.0.0.1"
+        self.server_port = self.server_address[1]
+
 
 _CLOSING: float = 0.0      # when the page said it was going away; 0 = it did not
 _SEEN_BROWSER = False
@@ -882,7 +901,7 @@ def start_server(port: int = 0, open_writer: bool = True) -> None:
     _cleanup_logs(cfg)
     applog.info("Server starting (port=%s, concurrency=%s, api_version=%s)",
                 port or "auto", cfg.concurrency, cfg.api_version)
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    server = LoopbackServer(("127.0.0.1", port), Handler)
     actual_port = server.server_address[1]
     _PORT = actual_port
     url = f"http://127.0.0.1:{actual_port}/"
