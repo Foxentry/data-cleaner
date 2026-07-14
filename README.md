@@ -67,9 +67,15 @@ auditors and developers can always use **B**. Both work on **Windows, macOS and 
 2. **Mapping** — for each column choose a service (Address, Company, Email, Phone, Name) and a
    field. **Groups matter:** several columns can form ONE record — e.g. street + city + ZIP =
    one address = one validation. Two addresses per row → group 1 and group 2.
-3. **Settings** — per-service options (auto-correct, accept post office as city, format number,
+3. **Country** — which country the data comes from. It is detected from the file
+   (phone prefixes, postal codes, company legal forms, …) and pre-filled; you can change it
+   or pick *mixed*. It is sent with the query, so Foxentry can **verify** it, correct a wrong
+   one and fill in a missing one — it does not restrict the search to that country. A country
+   column in the data wins, row by row. The wizard warns you here if a service has no data for
+   the country (company registers cover CZ/HU/PL/SK, names CZ/SK).
+4. **Settings** — per-service options (auto-correct, accept post office as city, format number,
    strict/smart name validation, …). These map to Foxentry API options.
-4. **Run** — see a credit & time estimate, confirm, watch progress, open the results.
+5. **Run** — see a credit & time estimate, confirm, watch progress, open the results.
 
 Results land in `output/` (`*_result.csv`, `*_result.xlsx`, `*_report.html`). The run can be
 stopped anytime and **resumes** where it left off.
@@ -124,6 +130,11 @@ data-cleaner/
 │   ├─ assets/              fonts, icons, icon.ico / icon.icns
 │   └─ …                    config.py, mapping.py, i18n.py, processor.py, …
 │
+├─ tools/                   maintainer-only scripts (not shipped in the build)
+│   ├─ update_countries.py  regenerates foxentry/countries.py from the Foxentry OAS
+│   ├─ check_query_schema.py  every query the tool builds must match the OAS
+│   └─ check_release.py     every file must name the same release
+│
 ├─ docs/                    HTML guides (also served by the app)
 │   ├─ documentation.html   user + reviewer manual (EN/CS)
 │   ├─ setup-guide.html     getting an API key
@@ -154,6 +165,18 @@ run on the last step (Order/summary). Once enabled, the **full request and respo
 keep it always on: `LOG_REQUESTS=on`; retention via `LOG_RETENTION_DAYS` (default 7) plus clearing
 from the log viewer. Requests are identified in the Foxentry log via the User-Agent
 `FoxentryCleaner (Python/…; ApiReference/2.1)`; the default `Api-Version` is `2.1`.
+
+## Versioning
+
+This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The public
+interface it versions is:
+
+* the command-line interface,
+* the configuration keys in `config.example.env`,
+* the columns of the result file: their names and what they hold.
+
+Columns may be **added** in a minor release. The meaning of an existing column, or of an
+existing configuration key, changes only in a **major** release.
 
 ## License
 

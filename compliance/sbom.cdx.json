@@ -4,19 +4,19 @@
   "serialNumber": "urn:uuid:4e56b8ca-a7a3-43cb-ada3-795a30c15b74",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-06-19T00:00:00Z",
+    "timestamp": "2026-07-14T00:00:00Z",
     "tools": [
       {
         "vendor": "AVANTRO s.r.o.",
         "name": "manual",
-        "version": "1.0.0"
+        "version": "2.0.0"
       }
     ],
     "component": {
-      "bom-ref": "foxentry-data-cleaner@1.0.0",
+      "bom-ref": "foxentry-data-cleaner@2.0.0",
       "type": "application",
       "name": "foxentry-data-cleaner",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "supplier": {
         "name": "AVANTRO s.r.o.",
         "url": [
