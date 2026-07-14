@@ -12,10 +12,71 @@ Language is set in the config file (LANGUAGE=en|cs).
 
 from __future__ import annotations
 
+import locale
+import os
+import subprocess
+import sys
+
 AVAILABLE_LANGUAGES = ["en", "cs"]
 LANGUAGE_NAMES = {"en": "English", "cs": "Čeština"}
 
 _CURRENT = "en"
+
+
+def normalize_lang(tag: str | None) -> str:
+    """A locale tag to a language we translate, or "" - "cs_CZ.UTF-8", "cs-CZ" and the GNU
+    list form "cs_CZ:cs" all mean Czech."""
+    code = (tag or "").split(":")[0].split(".")[0].replace("-", "_").split("_")[0].strip().lower()
+    return code if code in STRINGS else ""
+
+
+def system_language(default: str = "en") -> str:
+    """The language of the operating system, if we have a translation for it.
+
+    Used only when the config does not name a language: a fresh install should come up in the
+    user's own language rather than making them find the switch. Once they pick one, that
+    choice is written to config.env and this is never consulted again.
+
+    Any language we do not translate falls back to English. Nothing here is a new dependency
+    and nothing leaves the machine.
+    """
+    return normalize_lang(_os_locale()) or default
+
+
+def _os_locale() -> str | None:
+    """The OS locale tag ("cs_CZ", "en-GB", ...) - whichever way this platform reports it."""
+    # POSIX: the environment wins, and it is what a shell-launched app sees. "C" and "POSIX"
+    # are not languages, they mean "no locale set".
+    for name in ("LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE"):
+        value = (os.environ.get(name) or "").split(":")[0].split(".")[0].strip()
+        if value and value not in ("C", "POSIX"):
+            return value
+
+    if sys.platform == "win32":
+        # The UI language, not the formatting locale: a Czech user with US number formats
+        # still wants a Czech interface.
+        try:
+            import ctypes
+            lcid = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+            return locale.windows_locale.get(lcid)
+        except Exception:
+            pass
+
+    if sys.platform == "darwin":
+        # A GUI-launched app on macOS often has no LANG at all.
+        try:
+            out = subprocess.run(["defaults", "read", "-g", "AppleLocale"],
+                                 capture_output=True, text=True, timeout=2)
+            if out.returncode == 0 and out.stdout.strip():
+                return out.stdout.strip()
+        except Exception:
+            pass
+
+    try:
+        tag = locale.getdefaultlocale()[0]       # deprecated in 3.11, still the best fallback
+        return tag if tag and tag not in ("C", "POSIX") else None
+    except Exception:
+        return None
 
 
 def set_lang(lang: str) -> None:
@@ -205,6 +266,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "server_stop": "Leave this window open. Press Ctrl+C to stop.",
         "server_bye": "Stopped.",
         "cls_data_match": "{pct}% of values match: {label}",
+        "cls_full_name": "values contain a first name and a surname",
         "cls_header_resolved": "resolved from the header",
         "cls_header_refined": "data is an address; header set the subtype",
         "cls_data_wins": "data looks like {label} (header suggested otherwise) — data wins",
@@ -289,7 +351,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "no_files_intro": "Ve složce `input` nejsou žádné soubory k validaci.",
         "no_files_how": "Postup:",
         "no_files_1": " 1) Vložte do složky `input` soubor CSV nebo Excel s kontaktními daty",
-        "no_files_2": "    (e.g. emails.csv, addresses.csv, combined.csv).",
+        "no_files_2": "    (např. emaily.csv, adresy.csv, kombinovane.csv).",
         "no_files_3": " 2) Vyplňte do ní svá data (stačí jen sloupce, které máte).",
         "no_files_4": " 3) Uložte ji do složky `input` a spusťte aplikaci znovu.",
 
@@ -412,6 +474,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "server_stop": "Nechte toto okno otevřené. Zastavíte ho přes Ctrl+C.",
         "server_bye": "Zastaveno.",
         "cls_data_match": "{pct} % hodnot odpovídá: {label}",
+        "cls_full_name": "hodnoty obsahují jméno i příjmení",
         "cls_header_resolved": "určeno podle hlavičky",
         "cls_header_refined": "data jsou adresa; hlavička určila subtyp",
         "cls_data_wins": "data vypadají jako {label} (hlavička napovídala jinak) — rozhodla data",

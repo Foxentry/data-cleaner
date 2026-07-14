@@ -4,7 +4,8 @@
 # Two claims this repository makes, checked on every change so they cannot rot:
 #   1. every file that names the release names the same release;
 #   2. foxentry/countries.py is reproducible from its stated sources;
-#   3. every query the tool builds is one the Foxentry API actually declares.
+#   3. every query the tool builds is one the Foxentry API actually declares;
+#   4. every GitHub Action is pinned to an immutable commit SHA.
 #
 # Actions are pinned to an immutable commit SHA, with the version in a comment. A tag can be
 # moved to point at different code; a SHA cannot. Same style as scorecard.yml, and what the
@@ -49,6 +50,9 @@ jobs:
 
       - name: Every query the tool builds matches the OAS
         run: python tools/check_query_schema.py --oas .oas
+
+      - name: Every action is pinned to a commit SHA
+        run: python tools/check_action_pins.py
 
       - name: No undefined names or unused imports
         run: python -m pyflakes foxentry/*.py tools/*.py

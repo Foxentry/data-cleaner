@@ -423,7 +423,8 @@
       <input id="c_apikey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your Foxentry API key">
       <div id="c_apikey_hint" style="font-size:.78rem;color:var(--grey);margin-top:.35rem"></div></div>
     <div class="field"><label data-t="c_country">Default country</label>
-      <input id="c_country" type="text" value="CZ"></div>
+      <input id="c_country" type="text" value="" data-t-ph="c_country_ph" placeholder="auto">
+      <div class="hint" data-t="c_country_help">Leave empty to detect the country from each file. Fill it in only to force one country on every run.</div></div>
     <div class="row2">
       <div class="field"><label data-t="c_inenc">Input encoding</label><input id="c_inenc" type="text" value="auto"></div>
       <div class="field"><label data-t="c_outenc">Output encoding</label><input id="c_outenc" type="text" value="utf-8-sig"></div>
@@ -449,16 +450,18 @@ const T = {
   en:{
     s_file:"File", s_map:"Columns", s_country:"Country", s_set:"Settings", s_sum:"Order",
     c_country_title:"Where is this data from?",
-    c_country_sub:"Foxentry searches the data sources for this country. Picking the right one gives better matches — and tells you up front which services do not cover it.",
+    c_country_sub:"The country is sent with the query, so Foxentry can verify it, correct a wrong one and fill in a missing one. It does not narrow the search to that country. Picking the right one gives better matches, and tells you up front which services do not cover it.",
     c_detected:"Detected from your file:",
     why_country:"a country column", why_phone:"phone prefixes", why_zip:"postal codes",
     why_company:"company names", why_email:"e-mail domains",
+    c_country_ph:"auto",
+    c_country_help:"Leave empty to detect the country from each file. Fill it in only to force one country on every run.",
     c_country_label:"Country of the data",
     c_country_mixed:"Mixed / several countries",
     c_country_hint:"Used where the data allows it.",
     c_effect_lookup:"Address and company lookups will be limited to this country.",
     c_effect_prefix:"Phone numbers written without a prefix will be tried against this country first.",
-    c_country_hint_mixed:"Every country will be searched. Matches may be less accurate.",
+    c_country_hint_mixed:"No country is sent, so Foxentry cannot verify or correct one. Matches may be less accurate.",
     title_file:"Select a file to clean", lead_file:"Pick a file from the input folder or drop one here.",
     title_map:"Match the columns you want to validate", pair_with:"Pair with Foxentry",
     lead_map:"Each card is one column from your file. Pick the Foxentry service and field; group columns that form one record (e.g. street + city + ZIP).",
@@ -526,16 +529,18 @@ const T = {
   cs:{
     s_file:"Soubor", s_map:"Sloupce", s_country:"Země", s_set:"Nastavení", s_sum:"Objednávka",
     c_country_title:"Odkud jsou tato data?",
-    c_country_sub:"Foxentry bude hledat v datech této země. Správná volba dá přesnější výsledky — a rovnou uvidíte, které služby ji nepokrývají.",
+    c_country_sub:"Země se posílá jako součást dotazu, takže ji Foxentry může ověřit, špatnou opravit a chybějící doplnit. Neomezuje tím vyhledávání na tuto zemi. Správná volba dá přesnější výsledky a rovnou uvidíte, které služby ji nepokrývají.",
     c_detected:"Rozpoznáno ze souboru:",
     why_country:"sloupce se zemí", why_phone:"telefonních předvoleb", why_zip:"PSČ",
     why_company:"názvů firem", why_email:"e-mailových domén",
+    c_country_ph:"auto",
+    c_country_help:"Prázdné = zemi rozpoznáme z každého souboru. Vyplňte jen tehdy, chcete-li vynutit jednu zemi pro každý běh.",
     c_country_label:"Země dat",
     c_country_mixed:"Smíšená / více zemí",
     c_country_hint:"Použije se tam, kde to data dovolí.",
     c_effect_lookup:"Ověřování adres a firem se omezí na tuto zemi.",
     c_effect_prefix:"U čísel bez předvolby se nejdřív zkusí předvolba této země.",
-    c_country_hint_mixed:"Bude se hledat ve všech zemích. Výsledky mohou být méně přesné.",
+    c_country_hint_mixed:"Žádná země se neposílá, takže ji Foxentry nemůže ověřit ani opravit. Výsledky mohou být méně přesné.",
     title_file:"Vyberte soubor k pročištění", lead_file:"Vyberte soubor ze složky input nebo ho sem přetáhněte.",
     title_map:"Spárujte sloupce, které chcete validovat", pair_with:"Spárujte s Foxentry",
     lead_map:"Každá karta je jeden sloupec z vašeho souboru. Vyberte službu a pole Foxentry; sloupce tvořící jeden záznam (např. ulice + obec + PSČ) dejte do stejné skupiny.",
@@ -785,6 +790,7 @@ function renderSteps(){
 function applyT(){
   document.documentElement.lang=lang;
   document.querySelectorAll("[data-t]").forEach(e=>{const k=e.getAttribute("data-t");if((T[lang]||T.en)[k])e.textContent=(T[lang]||T.en)[k];});
+  document.querySelectorAll("[data-t-ph]").forEach(e=>{const k=e.getAttribute("data-t-ph");if((T[lang]||T.en)[k])e.placeholder=(T[lang]||T.en)[k];});
   document.getElementById("cfgTitle").textContent=tr("settings");
   renderLang();
 }
@@ -1508,7 +1514,7 @@ function pollRun(){
 async function openConfig(){
   const c=await api("/api/config");state.config=c;
   document.getElementById("c_lang").value=c.LANGUAGE||"en";
-  document.getElementById("c_country").value=c.DEFAULT_COUNTRY||"CZ";
+  document.getElementById("c_country").value=c.DEFAULT_COUNTRY||"";
   document.getElementById("c_sample").value=c.TEST_SAMPLE||"5";
   document.getElementById("c_timeout").value=c.TIMEOUT||"30";
   document.getElementById("c_inenc").value=c.INPUT_ENCODING||"auto";

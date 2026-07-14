@@ -211,8 +211,37 @@ def _header_hint(header_name: str) -> tuple[str, str] | None:
     return None
 
 
+def _is_full_name(samples) -> bool:
+    """Do the values look like a first name AND a surname, rather than one of the two?
+
+    "Jan Novák" is a full name; "Jan" is not. Two or more alphabetic words, no digits, no
+    company suffix. A column headed "Name" that holds full names is a full-name column,
+    whatever the header calls it - and sending "Jan Novák" as a first name burns a credit to
+    be told, correctly, that no such first name exists.
+    """
+    values = [s.strip() for s in samples if s and s.strip()]
+    if len(values) < 2:
+        return False
+    full = 0
+    for v in values:
+        if any(ch.isdigit() for ch in v):
+            continue
+        if any(x in v.lower() for x in _COMPANY_SUFFIX):
+            continue
+        words = [w for w in re.split(r"[\s,]+", v) if len(w) > 1 and w.replace("'", "").replace("-", "").isalpha()]
+        if len(words) >= 2:
+            full += 1
+    return full >= max(2, (len(values) + 1) // 2)
+
+
 def _resolve_letters(header_hint, samples) -> tuple[str | None, str | None, str]:
-    """The column is textual (city/street/name/surname/company/country) - the header decides."""
+    """The column is textual (city/street/name/surname/company/country) - the header decides,
+    except where the values plainly disagree with it."""
+    # A header that says "first name" over a column of full names is wrong, and the header is
+    # the weaker signal: the data is what will be sent.
+    if header_hint and header_hint[0] == "name" and header_hint[1] in ("name", "surname") \
+            and _is_full_name(samples):
+        return "name", "nameSurname", i18n.t("cls_full_name")
     if header_hint and header_hint[0] in ("location", "name", "company"):
         return header_hint[0], header_hint[1], i18n.t("cls_header_resolved")
     low = [s.strip().lower() for s in samples if s.strip()]
@@ -263,6 +292,12 @@ def suggest_candidates(samples, hint, max_n: int = 4, country: str | None = None
         if hint[0] == "location" and hint[1] in ("street", "streetWithNumber"):
             add_("location", "street", 100)
             add_("location", "streetWithNumber", 100)
+        elif hint[0] == "name" and hint[1] in ("name", "surname") and _is_full_name(samples):
+            # The header says "first name" (or "surname"), the values hold both halves. The
+            # data is the stronger signal: it is what gets sent. A column of "Jan Novák" sent
+            # as a first name burns a credit to be told, correctly, that no such name exists.
+            add_("name", "nameSurname", 100)
+            add_(hint[0], hint[1], 20)
         else:
             add_(hint[0], hint[1], 100)
 
@@ -310,6 +345,13 @@ def suggest_candidates(samples, hint, max_n: int = 4, country: str | None = None
                 add_("location", "city", 30)
                 add_("location", "street", 18)
                 add_("location", "streetWithNumber", 10)
+        elif _is_full_name(samples):
+            # Values carry a first name and a surname: the whole-name field, not either half.
+            add_("name", "nameSurname", 12)
+            add_("name", "name", 6)
+            add_("name", "surname", 5)
+            add_("company", "name", 4)
+            add_("location", "street", 3)
         else:
             add_("name", "name", 8)
             add_("name", "surname", 7)
