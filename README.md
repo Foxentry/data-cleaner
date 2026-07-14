@@ -130,9 +130,12 @@ data-cleaner/
 │   ├─ assets/              fonts, icons, icon.ico / icon.icns
 │   └─ …                    config.py, mapping.py, i18n.py, processor.py, …
 │
+├─ tests/                   regression tests (pytest; CI runs them on every change)
+│
 ├─ tools/                   maintainer-only scripts (not shipped in the build)
 │   ├─ update_countries.py  regenerates foxentry/countries.py from the Foxentry OAS
 │   ├─ check_query_schema.py  every query the tool builds must match the OAS
+│   ├─ check_action_pins.py every GitHub Action must be pinned to a commit SHA
 │   └─ check_release.py     every file must name the same release
 │
 ├─ docs/                    HTML guides (also served by the app)
@@ -149,7 +152,7 @@ data-cleaner/
 │   ├─ foxentry.spec        build recipe
 │   └─ version.txt          Windows version resource
 │
-├─ .github/                 SECURITY.md (GitHub policy) + workflows (release, scorecard)
+├─ .github/                 SECURITY.md (GitHub policy) + workflows (release, scorecard, consistency)
 ├─ vendor/                  bundled openpyxl (offline Excel support)
 └─ logs/                    request logs (off by default)
 ```

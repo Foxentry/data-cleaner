@@ -55,9 +55,29 @@ _COUNTRIES = {
     "slovensko", "slovak republic", "polsko", "polska", "poland",
     "rakousko", "nemecko", "deutschland", "germany", "austria",
 }
-_COMPANY_SUFFIX = ("s.r.o", "sro", "a.s", "as.", " as", "spol.", "spol ", "k.s", "v.o.s",
-                 "z.s", "o.p.s", "ltd", "gmbh", " se", "plc", "inc", "kft", "sp. z o.o",
-                 "družstvo", "druzstvo")
+# The same markers as WHOLE WORDS. Matching them as substrings is how "Pavel Sedláček" became
+# a company: " se" sits inside "Sedláček", " as" inside "Aslan", and one such value in ten was
+# enough to send a whole column of people to /company/validate.
+#
+# The dots are removed rather than split on: "a.s." is one word and must stay one word ("as"),
+# not two ("a", "s"). "o.o." likewise collapses to "oo", which is what makes a Polish
+# "Sp. z o.o." recognisable.
+_COMPANY_SUFFIX_TOKENS = {
+    "sro", "as", "spol", "ks", "vos", "zs", "ops", "ltd", "gmbh", "se", "plc", "inc", "kft",
+    "oo", "druzstvo", "družstvo",
+}
+
+
+def _has_company_token(value: str) -> bool:
+    """Does the value carry a legal-form marker as a word of its own?"""
+    words = (w.strip(",;:()\u201e\u201c\"'") for w in (value or "").lower().split())
+    return any(w.replace(".", "") in _COMPANY_SUFFIX_TOKENS for w in words if w)
+
+# Words that join the parts of a place name and never appear inside a person's name:
+# "Ústí nad Labem", "Rožnov pod Radhoštěm". Nobiliary particles (van, de, von) are NOT here -
+# "Ludwig van Beethoven" is a person.
+_PLACE_JOINERS = {"nad", "pod", "u", "ve", "na", "při", "za", "am", "an", "auf", "im", "upon"}
+
 # Strong, unambiguous company markers - enough on a single value, even with digits/brackets
 # in it (e.g. "DESTILA, s.r.o.(0)"). Deliberately excludes short/ambiguous ones (" as", " se").
 _COMPANY_STRONG = ("s.r.o", "spol.", "v.o.s", "o.p.s", "z.s.", "gmbh", " ltd", "kft",
@@ -190,7 +210,7 @@ def _classify_value(s: str, country: str | None = None) -> str | None:
         # the header (see _header_hint / _resolve_letters). Here just text = "_letters_".
         if low in _COUNTRIES:
             return "location/country"
-        if any(suf in low for suf in _COMPANY_SUFFIX):
+        if _has_company_token(low):
             return "company/name"
         return "_letters_"
     return None
@@ -211,14 +231,56 @@ def _header_hint(header_name: str) -> tuple[str, str] | None:
     return None
 
 
+def _mostly_companies(samples) -> bool:
+    """Do the values carry legal forms? "Alza.cz a.s." under a header that says "Jméno" is a
+    company, and the header is the weaker signal - the values are what gets sent."""
+    values = [s.strip() for s in samples if s and s.strip()]
+    if not values:
+        return False
+    return sum(1 for v in values if _has_company_token(v)) >= max(2, (len(values) + 1) // 2)
+
+
+def _is_full_name(samples) -> bool:
+    """Do the values look like a first name AND a surname, rather than one of the two?
+
+    "Jan Novák" is a full name; "Jan" is not. Two or more alphabetic words, no digits, no
+    company suffix. A column headed "Name" that holds full names is a full-name column,
+    whatever the header calls it - and sending "Jan Novák" as a first name burns a credit to
+    be told, correctly, that no such first name exists.
+    """
+    values = [s.strip() for s in samples if s and s.strip()]
+    if len(values) < 2:
+        return False
+    full = 0
+    for v in values:
+        if any(ch.isdigit() for ch in v):
+            continue
+        if _has_company_token(v):
+            continue
+        if any(w in _PLACE_JOINERS for w in re.split(r"[\s,]+", v.lower()) if w):
+            continue          # "Ústí nad Labem" is a town, not a person
+        words = [w for w in re.split(r"[\s,]+", v) if len(w) > 1 and w.replace("'", "").replace("-", "").isalpha()]
+        if len(words) >= 2:
+            full += 1
+    return full >= max(2, (len(values) + 1) // 2)
+
+
 def _resolve_letters(header_hint, samples) -> tuple[str | None, str | None, str]:
-    """The column is textual (city/street/name/surname/company/country) - the header decides."""
+    """The column is textual (city/street/name/surname/company/country) - the header decides,
+    except where the values plainly disagree with it."""
+    # A header that says "first name" over a column of full names is wrong, and the header is
+    # the weaker signal: the data is what will be sent.
+    if header_hint and header_hint[0] == "name" and _mostly_companies(samples):
+        return "company", "name", i18n.t("cls_company")
+    if header_hint and header_hint[0] == "name" and header_hint[1] in ("name", "surname") \
+            and _is_full_name(samples):
+        return "name", "nameSurname", i18n.t("cls_full_name")
     if header_hint and header_hint[0] in ("location", "name", "company"):
         return header_hint[0], header_hint[1], i18n.t("cls_header_resolved")
     low = [s.strip().lower() for s in samples if s.strip()]
     if low and sum(1 for s in low if s in _COUNTRIES) >= len(low) / 2:
         return "location", "country", i18n.t("cls_country")
-    if low and sum(1 for s in low if any(x in s for x in _COMPANY_SUFFIX)) >= max(2, (len(low) + 1) // 2):
+    if low and sum(1 for s in low if _has_company_token(s)) >= max(2, (len(low) + 1) // 2):
         return "company", "name", i18n.t("cls_company")
     if low and sum(1 for s in low if s in _CITIES) >= len(low) / 2:
         return "location", "city", i18n.t("cls_city")
@@ -263,6 +325,17 @@ def suggest_candidates(samples, hint, max_n: int = 4, country: str | None = None
         if hint[0] == "location" and hint[1] in ("street", "streetWithNumber"):
             add_("location", "street", 100)
             add_("location", "streetWithNumber", 100)
+        elif hint[0] == "name" and _mostly_companies(samples):
+            # Same principle, other direction: a column of "Alza.cz a.s." headed "Jméno" is a
+            # company. Sending it to /name/validate spends a credit on a certain answer.
+            add_("company", "name", 100)
+            add_(hint[0], hint[1], 20)
+        elif hint[0] == "name" and hint[1] in ("name", "surname") and _is_full_name(samples):
+            # The header says "first name" (or "surname"), the values hold both halves. The
+            # data is the stronger signal: it is what gets sent. A column of "Jan Novák" sent
+            # as a first name burns a credit to be told, correctly, that no such name exists.
+            add_("name", "nameSurname", 100)
+            add_(hint[0], hint[1], 20)
         else:
             add_(hint[0], hint[1], 100)
 
@@ -276,7 +349,7 @@ def suggest_candidates(samples, hint, max_n: int = 4, country: str | None = None
 
     # 3) company suffix (even a minority) -> company/name
     low = [s.strip().lower() for s in samples if s.strip()]
-    suff = sum(1 for s in low if any(x in s for x in _COMPANY_SUFFIX))
+    suff = sum(1 for s in low if _has_company_token(s))
     if suff:
         add_("company", "name", 30 * (suff / n) + 10)
 
@@ -310,6 +383,13 @@ def suggest_candidates(samples, hint, max_n: int = 4, country: str | None = None
                 add_("location", "city", 30)
                 add_("location", "street", 18)
                 add_("location", "streetWithNumber", 10)
+        elif _is_full_name(samples):
+            # Values carry a first name and a surname: the whole-name field, not either half.
+            add_("name", "nameSurname", 12)
+            add_("name", "name", 6)
+            add_("name", "surname", 5)
+            add_("company", "name", 4)
+            add_("location", "street", 3)
         else:
             add_("name", "name", 8)
             add_("name", "surname", 7)

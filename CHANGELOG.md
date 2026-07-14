@@ -59,12 +59,31 @@ first.
 - `foxentry/countries.py` — generated reference data (service coverage from the Foxentry
   OpenAPI specification, E.164 calling codes, postal-code shapes, country names). Regenerate
   with `tools/update_countries.py`; nothing is fetched at runtime.
-- **CI now enforces the three claims this repository makes:** every file names the same release
+- **The interface starts in the language of the operating system.** A Czech Windows, macOS or
+  Linux brings up a Czech interface; anything else brings up English. Picking a language in the
+  wizard writes it to `config.env` and that choice wins from then on. `LANGUAGE=` (empty) means
+  "follow the system"; existing configurations keep whatever they already say.
+- **Tests.** `tests/` holds a regression test for every bug that shipped or nearly shipped:
+  the settings dialog writing a value the user never chose, whole names being sent to the
+  first-name field, a failed correction counted as a rescue, the house number sent as a nested
+  object. CI runs them on every change.
+- **CI now enforces the claims this repository makes:** every file names the same release
   (`tools/check_release.py`), `countries.py` is reproducible from the Foxentry OpenAPI
-  specification (`tools/update_countries.py --check`), and every query the tool builds is one
-  the API actually declares (`tools/check_query_schema.py`). The last one is stricter than
+  specification (`tools/update_countries.py --check`), every query the tool builds is one the
+  API actually declares (`tools/check_query_schema.py`), and every GitHub Action is pinned to
+  an immutable commit SHA (`tools/check_action_pins.py`). The query check is stricter than
   schema validation, which cannot catch a stray field: the query schemas do not set
   `additionalProperties: false`, so an unknown key is legal as far as the schema is concerned.
+- **The release workflow verifies the tag before it builds anything.** `check_release.py --tag`
+  runs first, so a tag that disagrees with the version in the files stops the release instead
+  of publishing a binary that misstates its own version.
+
+### Security
+
+- **Every GitHub Action is pinned to an immutable commit SHA**, with the version in a trailing
+  comment. A tag is a label its owner can move; the release workflow holds the code-signing
+  credentials, so a moved tag there would run someone else's code with our certificate. CI
+  fails if any workflow reintroduces a mutable tag.
 
 ### Changed
 
@@ -106,6 +125,23 @@ first.
 
 ### Fixed
 
+- **The country detection is no longer switched off by simply saving the settings.** The
+  settings dialog pre-filled the country field with `CZ` and wrote it to `config.env` on save,
+  and `DEFAULT_COUNTRY` overrides detection. Every new user saves the settings once, to enter
+  the API key, so detection was disabled for everyone from their first run. The field now
+  defaults to empty, which means "detect it from each file".
+- **A single "Sedláček" no longer turns a column of people into companies.** Legal-form markers
+  were matched as substrings, and " se" sits inside "Sedláček" while " as" sits inside "Aslan".
+  One such value in ten was enough to send a whole column of customers to the company service.
+  They are matched as whole words now (`a.s.` stays one word, so it still reads as a company).
+- **The values override a misleading header, in both directions.** A column headed *Jméno* that
+  holds `Alza.cz a.s.` is a company; a column headed *Firma* that holds people is not. What gets
+  sent is the data, not the header.
+- **A column of full names is recognised as a full name.** A column headed *Name* or *Jméno*
+  holding `Jan Novák` was mapped to the *first name* field, which validates it as a first name
+  and correctly reports that no such name exists. The values now decide: two or more words and
+  no digits means a full name, whatever the header calls the column. Headers such as
+  *Jméno a příjmení* and *Full name* map to it directly as well.
 - **The house number is no longer silently dropped.** The query is flat: the field is named
   `number.full`, dot and all. It was being sent as a nested object (`{"number": {"full": "16"}}`),
   which the API ignores as an unknown key — and then reports the house number it never received

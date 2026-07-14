@@ -19,6 +19,8 @@ import os
 import sys
 from pathlib import Path
 
+from . import i18n
+
 
 def resource_dir() -> Path:
     """Read-only bundled files (HTML, assets). Works both frozen (PyInstaller)
@@ -136,7 +138,12 @@ class Config:
         self.api_version: str = get("FOXENTRY_API_VERSION", "2.1")
 
         # App language (en default). Also accepts the older JAZYK key.
-        self.lang: str = (get("LANGUAGE", "en") or "en").lower()
+        # An unset LANGUAGE means "follow the operating system". Once the user picks a language
+        # in the wizard it is written to config.env, and their choice wins from then on.
+        # The value is normalized: on Linux the OS exports LANGUAGE as a list ("cs_CZ:cs"), and
+        # that variable is read here as well, so it has to be understood rather than compared.
+        raw_lang = get("LANGUAGE", "")
+        self.lang: str = i18n.normalize_lang(raw_lang) or ("en" if raw_lang else i18n.system_language())
 
         # Default test batch size
         try:
@@ -238,7 +245,7 @@ CONFIG_KEYS = [
 ]
 
 _DEFAULTS = {
-    "FOXENTRY_API_KEY": "", "LANGUAGE": "en",
+    "FOXENTRY_API_KEY": "", "LANGUAGE": "",
     "FOXENTRY_API_URL": "https://api.foxentry.com", "FOXENTRY_API_VERSION": "2.1",
     "TEST_SAMPLE": "5", "DEFAULT_COUNTRY": "", "INPUT_ENCODING": "auto",
     "OUTPUT_ENCODING": "utf-8-sig", "RATE_LIMIT_RESERVE": "0.85",

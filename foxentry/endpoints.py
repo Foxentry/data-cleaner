@@ -226,7 +226,13 @@ ENDPOINTS: dict[str, Endpoint] = {
             ),
             FieldMapping(
                 "nameSurname",
-                ["cele_jmeno", "jmeno_prijmeni", "full_name", "name_surname", "namesurname"],
+                # Normalization strips spaces, diacritics, "-" and "_", so "Jméno a příjmení"
+                # arrives here as "jmenoaprijmeni". Bare "kontakt"/"customer" are deliberately
+                # NOT aliases: such a column just as often holds an e-mail or a phone number,
+                # and the content rule in the classifier catches those cases anyway.
+                ["cele_jmeno", "jmeno_prijmeni", "jmeno_a_prijmeni", "full_name", "fullname",
+                 "name_surname", "namesurname", "name_and_surname", "customer_name",
+                 "contact_name", "jmeno_zakaznika", "jmeno_kontaktu", "cele_jmeno_zakaznika"],
                 extraction=lambda d: _get(d, "nameSurname"),
             ),
         ],
