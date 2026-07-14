@@ -81,6 +81,18 @@ label, so the same data produces the same numbers in every interface language an
 
 ### Fixed
 
+- **An empty value in a mapped column is now sent, not omitted.** Within a record that carries
+  data, a blank cell in a mapped column goes into the query as an empty value instead of being
+  left out of it. The two are not the same to the API: an absent field was never asked about, an
+  empty one is a missing value — a defect the API reports and can correct, so a blank ZIP or
+  country now gets filled in. The same file therefore produces more corrections than it did in
+  1.0.1. A record with no data at all in any of its mapped columns is still skipped entirely: no
+  query, no credit.
+- **Which variant of a `oneOf` query is used is decided per row**, from what the row actually
+  holds, rather than from which columns were mapped: `{prefix, number}` vs `numberFull` for
+  phones, `{name, surname}` vs `nameSurname` for names, structured fields vs `full` for
+  addresses. Sending an empty `surname` alongside a filled `nameSurname` claimed a surname was
+  missing when it was right there.
 - **A correction that leaves the value invalid is no longer counted as valid.** Validity is
   decided by `resultCorrected.isValid`, not by the proposal code alone. The correction is still
   counted as a correction; the value is counted as invalid.

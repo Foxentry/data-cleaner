@@ -72,11 +72,15 @@ class Endpoint:
         """
         Build the query from the mapped columns.
 
-        A column the user mapped is ALWAYS sent, even when it is empty on this row -
-        as "". The distinction matters: a field left out says "we never asked about
-        this", while an empty one says "this value is missing", which is a defect the
-        API reports and can fix (invalidWithCorrection). Leaving an empty ZIP or
-        country out meant the correction never happened.
+        A column the user mapped is sent even when it is empty on this row - as "". An absent
+        field and an empty one do not mean the same thing to the API: absent says "we never
+        asked about this", empty says "this value is missing", which is a defect the API
+        reports and can fix (invalidWithCorrection). Leaving an empty ZIP or country out of
+        the query meant the correction never happened.
+
+        This only applies WITHIN a record that has something to validate. The caller builds a
+        query only for a group that carries at least one value (`Task.has_data`), so a record
+        whose mapped columns are all empty is never sent and never charged.
 
         `field_map` = {api_field: actual_column_name} (derived from the file header).
         """
