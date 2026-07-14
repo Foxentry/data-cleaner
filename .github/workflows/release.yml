@@ -145,11 +145,17 @@ jobs:
 
           APP="dist/Foxentry Data Cleaner.app"
 
-          # The hardened runtime is required for notarization. The entitlements are what let
-          # PyInstaller's onefile bootloader load the interpreter it unpacks at runtime.
-          codesign --force --deep --options runtime --timestamp \
-                   --entitlements packaging/entitlements.plist \
-                   -s "$DEV_ID" "$APP"
+          # The bundle carries the Python interpreter and its libraries as separate files, so
+          # every one of them has to be signed - from the inside out, the executable last.
+          # `--deep` is Apple's own "do not use this" flag: it is unreliable on a bundle this
+          # shape and it silently skips things.
+          find "$APP" \( -name "*.dylib" -o -name "*.so" -o -name "*.framework" \) -print0 |
+            while IFS= read -r -d '' lib; do
+              codesign --force --options runtime --timestamp \
+                       --entitlements packaging/entitlements.plist -s "$DEV_ID" "$lib"
+            done
+          codesign --force --options runtime --timestamp \
+                   --entitlements packaging/entitlements.plist -s "$DEV_ID" "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"
 
           ditto -c -k --keepParent "$APP" notarize-app.zip

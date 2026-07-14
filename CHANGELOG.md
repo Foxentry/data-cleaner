@@ -35,6 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The macOS app starts at once.** It was packed as a single file, so every launch unpacked
+  40 MB of interpreter into a temporary folder before the window appeared - about four seconds
+  of an icon twitching in the Dock. Inside a bundle there is nothing to be portable about, so
+  the files simply lie next to each other now. Windows and Linux stay a single file: that is
+  the whole point of them.
 - **macOS no longer asks to "find devices on your local network".** The server binds to
   `127.0.0.1` and never leaves it, but the standard library resolves the host name on bind
   (`socket.getfqdn`), and on macOS that goes out over mDNS - which is what macOS 15 was asking

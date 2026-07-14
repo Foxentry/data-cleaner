@@ -106,3 +106,12 @@ def test_the_loopback_server_does_not_ask_the_network_who_it_is() -> None:
     assert "class LoopbackServer" in SERVER
     assert "socketserver.TCPServer.server_bind" in SERVER
     assert "ThreadingHTTPServer((" not in SERVER, "the stock server resolves the host name"
+
+
+def test_the_macos_app_is_not_packed_into_a_single_file() -> None:
+    """A one-file build unpacks the whole interpreter on every launch. In a .app that buys
+    nothing - the bundle is already the unit you move around - and costs four seconds of
+    staring at the Dock."""
+    assert '_ONEDIR = sys.platform == "darwin"' in SPEC
+    assert "COLLECT(" in SPEC
+    assert "exclude_binaries=_ONEDIR" in SPEC

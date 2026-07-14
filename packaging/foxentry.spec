@@ -69,13 +69,23 @@ else:  # linux
     _icon = None                                        # no embedded icon on Linux
     _version = None
 
-# --onefile is the default for EXE() when COLLECT is not used.
+# Windows and Linux: one file. That is the whole point of them - download it, put it where you
+# like, run it. The bootloader unpacks the interpreter to a temp folder on each start, which
+# costs a second or two, and that is the price of a single portable file.
+#
+# macOS: NOT one file. Inside a .app bundle there is nothing to be portable about - the bundle
+# IS the unit you move around. Packing it into a single file only means unpacking 40 MB into a
+# temp folder on every launch, and the app sat there for four seconds doing it before the
+# window appeared. In a bundle the files simply lie next to each other and it starts at once.
+_ONEDIR = sys.platform == "darwin"
+
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
+    [] if _ONEDIR else a.binaries,
+    [] if _ONEDIR else a.datas,
     [],
+    exclude_binaries=_ONEDIR,
     name="FoxentryDataCleaner",
     debug=False,
     bootloader_ignore_signals=False,
@@ -106,9 +116,17 @@ exe = EXE(
 #
 # The app writes nothing inside the bundle (that would break the signature and fail in
 # /Applications): `config.data_dir()` puts its folder in ~/Documents instead.
-if sys.platform == "darwin":
-    app = BUNDLE(
+if _ONEDIR:
+    collected = COLLECT(
         exe,
+        a.binaries,
+        a.datas,
+        strip=False,
+        upx=False,
+        name="FoxentryDataCleaner",
+    )
+    app = BUNDLE(
+        collected,
         name="Foxentry Data Cleaner.app",
         icon=_icon,
         bundle_identifier="cz.avantro.foxentry.datacleaner",
