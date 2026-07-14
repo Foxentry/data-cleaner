@@ -131,7 +131,9 @@ data-cleaner/
 │   └─ …                    config.py, mapping.py, i18n.py, processor.py, …
 │
 ├─ tools/                   maintainer-only scripts (not shipped in the build)
-│   └─ update_countries.py  regenerates foxentry/countries.py from the Foxentry OAS
+│   ├─ update_countries.py  regenerates foxentry/countries.py from the Foxentry OAS
+│   ├─ check_query_schema.py  every query the tool builds must match the OAS
+│   └─ check_release.py     every file must name the same release
 │
 ├─ docs/                    HTML guides (also served by the app)
 │   ├─ documentation.html   user + reviewer manual (EN/CS)

@@ -81,6 +81,14 @@ label, so the same data produces the same numbers in every interface language an
 
 ### Fixed
 
+- **The house number is no longer silently dropped.** The query is flat: the field is named
+  `number.full`, dot and all. It was being sent as a nested object (`{"number": {"full": "16"}}`),
+  which the API ignores as an unknown key — and then reports the house number it never received
+  as valid. A file with the street and the house number in separate columns was therefore
+  validated as a street: `Dietmar-Hopp-Allee 16` came back `valid` as `Dietmar-Hopp-Allee, 69190
+  Walldorf`, and an address the API could not place produced suggestions for house numbers it had
+  never been given. The same applies to `number.part1`, `number.part2` and the rest. (The
+  *response* does nest them under `data.number`; the query does not.)
 - **An empty value in a mapped column is now sent, not omitted.** Within a record that carries
   data, a blank cell in a mapped column goes into the query as an empty value instead of being
   left out of it. The two are not the same to the API: an absent field was never asked about, an

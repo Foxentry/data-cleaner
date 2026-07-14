@@ -89,13 +89,12 @@ class Endpoint:
             column = field_map.get(p.api_field)
             if not column:
                 continue
-            value = (row.get(column) or "").strip()
-            # support for dotted notation number.full -> {"number": {"full": ...}}
-            if "." in p.api_field:
-                a, b = p.api_field.split(".", 1)
-                q.setdefault(a, {})[b] = value  # type: ignore[index]
-            else:
-                q[p.api_field] = value
+            # `number.full` is the name of the field, dot and all - the query is flat. It is
+            # NOT `{"number": {"full": ...}}`: the API ignores that as an unknown key, and
+            # then reports the house number it never received as valid. See the OAS
+            # (LocationValidationBody: `number.full`, `number.part1`, ...). The *response*
+            # nests them under `data.number`; the query does not.
+            q[p.api_field] = (row.get(column) or "").strip()
 
         # email: the query accepts only the `email` field (OAS 2.1)
         if self.key == "email":
@@ -122,9 +121,12 @@ class Endpoint:
                 q.pop("surname", None)
         # address: same principle. `full` and the structured fields describe the same
         # thing, so send whichever this row has - structured wins when it carries data,
-        # because it is more precise.
+        # because it is more precise. The house number is spelled `number.full`,
+        # `number.part1`, ... so it is matched by prefix, not by name. `country` belongs to
+        # neither variant: it is sent with both.
         if self.key == "location" and "full" in q:
-            struct = ("streetWithNumber", "street", "number", "city", "zip")
+            named = ("streetWithNumber", "street", "city", "zip")
+            struct = tuple(k for k in q if k in named or k.startswith("number."))
             if _any_filled(q, struct):
                 q.pop("full", None)
             else:
