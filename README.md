@@ -130,6 +130,8 @@ data-cleaner/
 │   ├─ assets/              fonts, icons, icon.ico / icon.icns
 │   └─ …                    config.py, mapping.py, i18n.py, processor.py, …
 │
+├─ tests/                   regression tests (pytest; CI runs them on every change)
+│
 ├─ tools/                   maintainer-only scripts (not shipped in the build)
 │   ├─ update_countries.py  regenerates foxentry/countries.py from the Foxentry OAS
 │   ├─ check_query_schema.py  every query the tool builds must match the OAS

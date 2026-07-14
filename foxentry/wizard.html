@@ -424,7 +424,7 @@
       <div id="c_apikey_hint" style="font-size:.78rem;color:var(--grey);margin-top:.35rem"></div></div>
     <div class="field"><label data-t="c_country">Default country</label>
       <input id="c_country" type="text" value="" data-t-ph="c_country_ph" placeholder="auto">
-      <div class="hint" data-t="c_country_help">Leave empty to detect the country from each file. Fill it in only to force one country on every run.</div></div>
+      <div class="chint" data-t="c_country_help">Leave empty to detect the country from each file. Fill it in only to force one country on every run.</div></div>
     <div class="row2">
       <div class="field"><label data-t="c_inenc">Input encoding</label><input id="c_inenc" type="text" value="auto"></div>
       <div class="field"><label data-t="c_outenc">Output encoding</label><input id="c_outenc" type="text" value="utf-8-sig"></div>
@@ -434,7 +434,7 @@
       <div class="field"><label data-t="c_timeout">Timeout (s)</label><input id="c_timeout" type="number" value="30"></div>
     </div>
     <div class="field"><label data-t="c_lang">Language</label>
-      <select id="c_lang" class="std"><option value="en">English</option><option value="cs">Čeština</option></select></div>
+      <select id="c_lang" class="std"><option value="" data-t="c_lang_auto">Auto (system language)</option><option value="en">English</option><option value="cs">Čeština</option></select></div>
     <div class="toggle"><span class="switch"><input type="checkbox" id="c_csv"><span class="h"></span></span><span data-t="c_csv_l">CSV injection guard</span></div>
     <div class="footer-actions">
       <button class="btn--ghost" onclick="closeConfig()" data-t="c_cancel">Cancel</button>
@@ -454,6 +454,7 @@ const T = {
     c_detected:"Detected from your file:",
     why_country:"a country column", why_phone:"phone prefixes", why_zip:"postal codes",
     why_company:"company names", why_email:"e-mail domains",
+    c_lang_auto:"Auto (system language)",
     c_country_ph:"auto",
     c_country_help:"Leave empty to detect the country from each file. Fill it in only to force one country on every run.",
     c_country_label:"Country of the data",
@@ -533,6 +534,7 @@ const T = {
     c_detected:"Rozpoznáno ze souboru:",
     why_country:"sloupce se zemí", why_phone:"telefonních předvoleb", why_zip:"PSČ",
     why_company:"názvů firem", why_email:"e-mailových domén",
+    c_lang_auto:"Automaticky (podle systému)",
     c_country_ph:"auto",
     c_country_help:"Prázdné = zemi rozpoznáme z každého souboru. Vyplňte jen tehdy, chcete-li vynutit jednu zemi pro každý běh.",
     c_country_label:"Země dat",
@@ -1513,7 +1515,7 @@ function pollRun(){
 /* ---------- advanced config modal ---------- */
 async function openConfig(){
   const c=await api("/api/config");state.config=c;
-  document.getElementById("c_lang").value=c.LANGUAGE||"en";
+  document.getElementById("c_lang").value=c.LANGUAGE||"";   // "" = follow the system
   document.getElementById("c_country").value=c.DEFAULT_COUNTRY||"";
   document.getElementById("c_sample").value=c.TEST_SAMPLE||"5";
   document.getElementById("c_timeout").value=c.TIMEOUT||"30";

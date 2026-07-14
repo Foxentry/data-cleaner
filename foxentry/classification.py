@@ -58,6 +58,15 @@ _COUNTRIES = {
 _COMPANY_SUFFIX = ("s.r.o", "sro", "a.s", "as.", " as", "spol.", "spol ", "k.s", "v.o.s",
                  "z.s", "o.p.s", "ltd", "gmbh", " se", "plc", "inc", "kft", "sp. z o.o",
                  "družstvo", "druzstvo")
+# The same markers as whole words, for places where a substring match would be wrong: " se"
+# is inside "Sedláček", " as" inside "Aslan".
+_COMPANY_SUFFIX_TOKENS = {t.strip(" .") for t in _COMPANY_SUFFIX} | {"sro", "as", "se", "spol"}
+
+# Words that join the parts of a place name and never appear inside a person's name:
+# "Ústí nad Labem", "Rožnov pod Radhoštěm". Nobiliary particles (van, de, von) are NOT here -
+# "Ludwig van Beethoven" is a person.
+_PLACE_JOINERS = {"nad", "pod", "u", "ve", "na", "při", "za", "am", "an", "auf", "im", "upon"}
+
 # Strong, unambiguous company markers - enough on a single value, even with digits/brackets
 # in it (e.g. "DESTILA, s.r.o.(0)"). Deliberately excludes short/ambiguous ones (" as", " se").
 _COMPANY_STRONG = ("s.r.o", "spol.", "v.o.s", "o.p.s", "z.s.", "gmbh", " ltd", "kft",
@@ -226,8 +235,13 @@ def _is_full_name(samples) -> bool:
     for v in values:
         if any(ch.isdigit() for ch in v):
             continue
-        if any(x in v.lower() for x in _COMPANY_SUFFIX):
+        # Whole words, not substrings. `_COMPANY_SUFFIX` holds fragments such as " as" and
+        # " se", and " se" sits inside "Jan Sedláček" - one of the commonest Czech surnames.
+        lowered = [w for w in re.split(r"[\s,]+", v.lower().replace(".", " ")) if w]
+        if any(w in _COMPANY_SUFFIX_TOKENS for w in lowered):
             continue
+        if any(w in _PLACE_JOINERS for w in lowered):
+            continue          # "Ústí nad Labem" is a town, not a person
         words = [w for w in re.split(r"[\s,]+", v) if len(w) > 1 and w.replace("'", "").replace("-", "").isalpha()]
         if len(words) >= 2:
             full += 1

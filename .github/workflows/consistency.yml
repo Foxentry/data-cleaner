@@ -7,6 +7,9 @@
 #   3. every query the tool builds is one the Foxentry API actually declares;
 #   4. every GitHub Action is pinned to an immutable commit SHA.
 #
+# It also runs the tests. They are not a general suite: each one is a fence around a hole we
+# have already fallen into.
+#
 # Actions are pinned to an immutable commit SHA, with the version in a comment. A tag can be
 # moved to point at different code; a SHA cannot. Same style as scorecard.yml, and what the
 # OpenSSF Scorecard Pinned-Dependencies check expects.
@@ -40,7 +43,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install the build dependencies
-        run: pip install phonenumbers Babel PyYAML pyflakes
+        run: pip install phonenumbers Babel PyYAML pyflakes pytest
 
       - name: Versions agree across every file
         run: python tools/check_release.py
@@ -56,3 +59,6 @@ jobs:
 
       - name: No undefined names or unused imports
         run: python -m pyflakes foxentry/*.py tools/*.py
+
+      - name: Tests
+        run: python -m pytest tests -q

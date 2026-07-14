@@ -63,6 +63,10 @@ first.
   Linux brings up a Czech interface; anything else brings up English. Picking a language in the
   wizard writes it to `config.env` and that choice wins from then on. `LANGUAGE=` (empty) means
   "follow the system"; existing configurations keep whatever they already say.
+- **Tests.** `tests/` holds a regression test for every bug that shipped or nearly shipped:
+  the settings dialog writing a value the user never chose, whole names being sent to the
+  first-name field, a failed correction counted as a rescue, the house number sent as a nested
+  object. CI runs them on every change.
 - **CI now enforces the claims this repository makes:** every file names the same release
   (`tools/check_release.py`), `countries.py` is reproducible from the Foxentry OpenAPI
   specification (`tools/update_countries.py --check`), every query the tool builds is one the
