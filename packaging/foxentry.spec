@@ -4,6 +4,7 @@
 # Must run on the TARGET OS (PyInstaller does not cross-compile). Windows here.
 import os
 import sys
+from datetime import datetime
 from PyInstaller.utils.hooks import collect_submodules
 
 # This spec lives in packaging/. Resolve every path from the spec's own folder so
@@ -26,6 +27,14 @@ def _version_from_package() -> str:
 
 
 _APP_VERSION = _version_from_package()
+
+# The build number, and it must differ on every build.
+#
+# macOS caches Info.plist per bundle identifier + version. Ten test builds that all called
+# themselves 2.1.0 meant LaunchServices read the plist from the FIRST one and ignored the rest -
+# so a fix to the plist looked like it had not worked, when in fact it had never been read.
+# CI passes its run number; a local build gets the clock.
+_BUILD = os.environ.get("FOXENTRY_BUILD") or datetime.now().strftime("%Y%m%d%H%M")
 
 
 # Read-only bundled resources. Layout of this project:
@@ -132,8 +141,8 @@ if _ONEDIR:
         bundle_identifier="cz.avantro.foxentry.datacleaner",
         version=_APP_VERSION,
         info_plist={
-            "CFBundleShortVersionString": _APP_VERSION,
-            "CFBundleVersion": _APP_VERSION,
+            "CFBundleShortVersionString": _APP_VERSION,      # what the user sees: 2.1.0
+            "CFBundleVersion": f"{_APP_VERSION}.{_BUILD}",   # what macOS caches on: unique
             "NSHighResolutionCapable": True,
             "LSMinimumSystemVersion": "11.0",
             "NSHumanReadableCopyright": "Copyright 2026 AVANTRO s.r.o. Apache-2.0.",

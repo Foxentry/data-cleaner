@@ -35,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Every build carries its own build number.** macOS caches `Info.plist` per bundle identifier
+  and version: builds that all called themselves the same thing meant the system read the plist
+  from whichever it saw first and ignored the rest, so a change to it looked like it had not
+  worked when in fact it had never been read.
 - **Launching the app again reopens its window** instead of starting a second copy. The window
   is a browser window and browser windows get buried; relaunching is what a user does when one
   goes missing, and it used to leave them with two servers on two ports, one holding a

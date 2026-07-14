@@ -157,3 +157,12 @@ def test_quitting_from_the_dock_is_not_a_kill() -> None:
 def test_the_macos_app_is_in_the_dock() -> None:
     """A running app with no trace in the Dock has no trace anywhere."""
     assert '"LSUIElement": False' in SPEC
+
+
+def test_every_build_gets_its_own_number() -> None:
+    """macOS caches Info.plist per bundle id + version. Ten test builds all calling themselves
+    2.1.0 meant the system read the plist from the first one and ignored every fix after it -
+    a fix that looked broken because it was never read."""
+    assert "_BUILD" in SPEC
+    assert 'os.environ.get("FOXENTRY_BUILD")' in SPEC
+    assert '"CFBundleVersion": f"{_APP_VERSION}.{_BUILD}"' in SPEC

@@ -115,7 +115,24 @@ jobs:
       - name: Install build deps
         run: pip install pyinstaller openpyxl==3.1.5 et_xmlfile==2.0.0
       - name: Build (PyInstaller)
+        env:
+          # macOS caches Info.plist per bundle id + version. Every build gets its own number, or
+          # the system reads the plist from whichever build it saw first and ignores the rest.
+          FOXENTRY_BUILD: ${{ github.run_number }}
         run: pyinstaller packaging/foxentry.spec --clean
+
+      # What ended up in the bundle, printed here rather than asked of whoever is testing.
+      # A plist that says the wrong thing is a five-second answer; guessing at it is a day.
+      - name: What the bundle says about itself
+        run: |
+          PLIST="$PWD/dist/Foxentry Data Cleaner.app/Contents/Info.plist"
+          echo "CFBundleShortVersionString: $(defaults read "$PLIST" CFBundleShortVersionString)"
+          echo "CFBundleVersion:            $(defaults read "$PLIST" CFBundleVersion)"
+          echo "CFBundleIdentifier:         $(defaults read "$PLIST" CFBundleIdentifier)"
+          echo -n "LSUIElement:                "
+          defaults read "$PLIST" LSUIElement 2>/dev/null || echo "(absent)"
+          echo "  -> 0 or absent = Dock icon.  1 = no Dock icon."
+
       # Signing, notarization and stapling.
       #
       # A .app can be STAPLED: the notarization ticket is attached to the bundle, so Gatekeeper
