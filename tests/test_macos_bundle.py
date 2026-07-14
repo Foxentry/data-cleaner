@@ -50,23 +50,30 @@ SPEC = (Path(__file__).resolve().parent.parent / "packaging" / "foxentry.spec").
 
 
 def test_the_window_closing_stops_the_app() -> None:
-    """The browser is the window. The page says "still here" every couple of seconds, and the
-    server stops when that stops - a close and a reload are indistinguishable to the page, so
-    there is no way to react to a close instantly, and a grace period is what keeps F5 from
-    killing the app."""
-    assert '"/api/ping"' in SERVER
-    assert "_watchdog" in SERVER
-    assert '/api/ping' in WIZARD and "setInterval" in WIZARD
+    """The page says it is going away; the server schedules the stop; anything that talks to it
+    before the deadline cancels that. A reload cancels its own shutdown by loading."""
+    assert '"/api/window-closing"' in SERVER
+    assert "_note_browser" in SERVER, "any request must cancel a pending close"
+    assert "pagehide" in WIZARD and "keepalive" in WIZARD
 
 
-def test_the_grace_period_survives_a_reload() -> None:
-    """A reload is back within a second. The grace has to be longer than that, and long enough
-    that a slow page load does not read as a closed window."""
+def test_it_is_not_a_heartbeat() -> None:
+    """A heartbeat cannot work here, and this is the bug it caused.
+
+    Browsers throttle timers in a background tab to one tick per minute, and `confirm()` blocks
+    the event loop entirely. Both look exactly like a closed window. The first build of this
+    feature used `setInterval`, and opening the Quit dialog and hesitating for four seconds
+    killed the server underneath the user: the page stayed on screen and every button stopped
+    working.
+    """
+    assert "setInterval" not in WIZARD, "a timer cannot decide whether the window is open"
+    assert "_LAST_PING" not in SERVER
+
+
+def test_a_reload_has_time_to_come_back() -> None:
     import re
-    grace = float(re.search(r"_PING_GRACE\s*=\s*([\d.]+)", SERVER).group(1))
-    every = float(re.search(r"_PING_EVERY\s*=\s*([\d.]+)", SERVER).group(1))
-    assert every < grace, "the page must ping more often than the server gives up"
-    assert grace >= 2 * every, "one missed ping must not be enough to kill the app"
+    grace = float(re.search(r"_CLOSE_GRACE\s*=\s*([\d.]+)", SERVER).group(1))
+    assert grace >= 3, "a reload on a slow machine must not be read as a closed window"
 
 
 def test_a_windowed_build_can_still_speak() -> None:

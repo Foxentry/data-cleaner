@@ -1521,13 +1521,22 @@ function pollRun(){
 }
 
 /* ---------- advanced config modal ---------- */
-// Tell the server the window is still open. When this stops, so does the server.
-let heartbeat = setInterval(()=>{ api("/api/ping").catch(()=>{}); }, 2000);
-api("/api/ping").catch(()=>{});          // and say so immediately, do not wait 2 s
+// The window is the app: when it closes, the app stops.
+//
+// `pagehide` fires on a close AND on a reload, and nothing tells them apart. So we do not try:
+// we say "going away", the server schedules the shutdown, and a reload cancels it simply by
+// loading and talking to the server again. `keepalive` is what lets the request survive the
+// page it was sent from.
+//
+// Deliberately NOT a heartbeat: browsers throttle timers in a background tab to one tick per
+// minute, and confirm() blocks them dead. Either would read as a closed window, and switching
+// to another app for two minutes would kill a run.
+window.addEventListener("pagehide", ()=>{
+  try{ fetch("/api/window-closing", {method:"POST", keepalive:true}); }catch(e){}
+});
 
 async function quitApp(){
   if(!confirm(tr("quit_confirm"))) return;
-  clearInterval(heartbeat);
   try{ await api("/api/quit", {method:"POST"}); }catch(e){}   // the server dies mid-reply; that is the point
   document.body.innerHTML =
     '<div style="display:flex;align-items:center;justify-content:center;height:100vh;'

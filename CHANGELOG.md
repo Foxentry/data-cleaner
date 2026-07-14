@@ -19,11 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The notarization ticket is stapled** to the app and to the disk image, so Gatekeeper clears
   them without asking Apple. A bare binary cannot be stapled, which is why 2.0.0 needed an
   internet connection on first launch.
-- **The browser window is the app.** Close it and the app stops. The page tells the server it
-  is still open every couple of seconds; when that stops, so does the server. A reload is back
-  within a second and never trips it. There is no event that means "the user closed the window"
-  (a close and a reload look identical to the page), so a short grace period is what makes F5
-  safe.
+- **The browser window is the app.** Close it and the app stops. The page says it is going
+  away, the server schedules the stop, and anything that talks to it before the deadline cancels
+  that - which is how a reload survives: it loads again and cancels its own shutdown. Switching
+  to another window changes nothing, because nothing is being counted.
 - **No console window on Windows and macOS.** The black box behind the browser is gone: people
   closed it by accident or left it running for days. Output goes to `logs/app.log`, and a
   failure to start puts up a native dialog rather than vanishing. `--cli` attaches to the

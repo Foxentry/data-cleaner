@@ -106,31 +106,32 @@ def _save_run_summary(file: str, summary: dict) -> None:
         pass
 
 # last run state (local, single user)
-# The browser is the window. When it goes, the app goes.
+# The browser window IS the app. Close it and the app stops.
 #
-# There is no event that means "the user closed the window": a close and a reload look exactly
-# the same to the page (`pagehide` fires for both). So the page says "still here" every couple
-# of seconds instead, and the server stops when the saying stops. A reload is back within a
-# second and never trips it; a closed window never comes back.
+# The page tells us when it is going away (`pagehide`). That fires on a reload too, and nothing
+# in the event says which it was - so we do not decide, we WAIT. A close is scheduled, and any
+# request that arrives before the deadline cancels it. A reload is back in under a second and
+# cancels its own shutdown; a closed window never comes back.
 #
-# The delay is not felt, because there is nothing left on screen to wait for: the console
-# window is gone in the windowed builds, so the process just ends.
-_PING_EVERY = 2.0          # the page pings this often
-_PING_GRACE = 4.0          # ... and this long without one means the window is gone
-_OPEN_GRACE = 120.0        # the browser has this long to appear at all (slow machines, no browser)
+# This is why it is not a heartbeat. A heartbeat has to survive everything that stops a timer,
+# and browsers stop timers all the time: a background tab is throttled to one tick per MINUTE,
+# and `confirm()` blocks the event loop entirely. Either would look exactly like a closed
+# window. Switching to Excel for two minutes would have killed the app.
+_CLOSE_GRACE = 5.0         # a reload has this long to come back
+_OPEN_GRACE = 180.0        # the browser has this long to appear at all
 
-_LAST_PING: float = 0.0
+_CLOSING: float = 0.0      # when the page said it was going away; 0 = it did not
+_SEEN_BROWSER = False
 
 
 def _watchdog(server, started: float) -> None:
     while True:
-        time.sleep(1.0)
+        time.sleep(0.5)
         now = time.monotonic()
-        if _LAST_PING:
-            if now - _LAST_PING > _PING_GRACE:
-                break
-        elif now - started > _OPEN_GRACE:
-            break                       # the browser never arrived - do not linger forever
+        if _CLOSING and now - _CLOSING > _CLOSE_GRACE:
+            break                       # the window went away and nothing came back
+        if not _SEEN_BROWSER and now - started > _OPEN_GRACE:
+            break                       # no browser ever arrived - do not linger forever
     threading.Thread(target=server.shutdown, daemon=True).start()
 
 
@@ -317,6 +318,7 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---------- GET ----------
     def do_GET(self):  # noqa: N802
+        self._note_browser()
         path = urlparse(self.path)
         p = path.path
         if p.startswith("/api/") and not self._api_auth("GET"):
@@ -345,10 +347,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._schema(q.get("lang", [""])[0], q.get("country", [""])[0])
         if p == "/api/config":
             return self._json(config_mod.read_config_values())
-        if p == "/api/ping":
-            global _LAST_PING
-            _LAST_PING = time.monotonic()
-            return self._json({"ok": True})
+
         if p == "/api/progress":
             with _RUN_LOCK:
                 return self._json(dict(_RUN))
@@ -363,12 +362,19 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):  # noqa: N802
         path = urlparse(self.path)
         p = path.path
+        if p != "/api/window-closing":
+            self._note_browser()        # ... but the closing notice must not cancel itself
         if p.startswith("/api/") and not self._api_auth("POST"):
             return
         if p == "/api/config":
             return self._save_config()
         if p == "/api/quit":
             return self._quit()
+        if p == "/api/window-closing":
+            # `pagehide`: the page is going away. It may be a reload - see _watchdog.
+            global _CLOSING
+            _CLOSING = time.monotonic()
+            return self._json({"ok": True})
         if p == "/api/logs/clear":
             return self._json(self._delete_logs())
         if p == "/api/upload":
@@ -390,6 +396,13 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(404); self.end_headers()
 
     # ---------- implementation ----------
+    def _note_browser(self) -> None:
+        """Something is talking to us, so the window is open. If a close was pending, it was a
+        reload: cancel it."""
+        global _CLOSING, _SEEN_BROWSER
+        _SEEN_BROWSER = True
+        _CLOSING = 0.0
+
     def _api_auth(self, method: str) -> bool:
         """Protect the local API: allow only a loopback Host (against DNS rebinding) and for
         POST also a matching session token (against CSRF from another page). Otherwise 403."""
