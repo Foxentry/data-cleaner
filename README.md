@@ -166,6 +166,18 @@ keep it always on: `LOG_REQUESTS=on`; retention via `LOG_RETENTION_DAYS` (defaul
 from the log viewer. Requests are identified in the Foxentry log via the User-Agent
 `FoxentryCleaner (Python/…; ApiReference/2.1)`; the default `Api-Version` is `2.1`.
 
+## Versioning
+
+This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The public
+interface it versions is:
+
+* the command-line interface,
+* the configuration keys in `config.example.env`,
+* the columns of the result file: their names and what they hold.
+
+Columns may be **added** in a minor release. The meaning of an existing column, or of an
+existing configuration key, changes only in a **major** release.
+
 ## License
 
 Foxentry Data Cleaner is open source under the Apache License 2.0 (see [LICENSE](LICENSE)). The

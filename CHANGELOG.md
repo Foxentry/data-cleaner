@@ -7,11 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.1.0] - 2026-07-13
+## [2.0.0] - 2026-07-14
 
 This release makes the tool country-aware. It also corrects how results are counted: every
 figure is now derived from the API's own verdict rather than from the text of a translated
 label, so the same data produces the same numbers in every interface language and in every view.
+
+It is a major release because two things that already existed changed their meaning: a column
+in the result file, and a configuration key. Neither change fails loudly, so both are listed
+first.
+
+### Breaking
+
+- **`<group>_suggestion` now lists every candidate the API offered, separated by `|`.** It used
+  to hold only the first one. A pipeline that reads this column as a single value will now
+  receive `Praha 1|Praha 2|Praha 3` where it previously received `Praha 1`. To keep the old
+  behaviour, split on `|` and take the first element. The reason for the change: an address
+  with no house number can come back with a dozen equally plausible candidates, and showing
+  only the first presented a guess as if it were the answer.
+- **`DEFAULT_COUNTRY` no longer means "the fallback country"; it now forces one country onto
+  every run.** It used to apply only when the *"Add default country"* setting was switched on,
+  and defaulted to `CZ`. That setting is gone: the country now comes from the new wizard step,
+  which detects it from the data. **Leave `DEFAULT_COUNTRY` empty** unless you deliberately
+  want to override the detection for every file. A country column in the data still wins, row
+  by row.
 
 ### Added
 
@@ -40,6 +59,12 @@ label, so the same data produces the same numbers in every interface language an
 - `foxentry/countries.py` — generated reference data (service coverage from the Foxentry
   OpenAPI specification, E.164 calling codes, postal-code shapes, country names). Regenerate
   with `tools/update_countries.py`; nothing is fetched at runtime.
+- **CI now enforces the three claims this repository makes:** every file names the same release
+  (`tools/check_release.py`), `countries.py` is reproducible from the Foxentry OpenAPI
+  specification (`tools/update_countries.py --check`), and every query the tool builds is one
+  the API actually declares (`tools/check_query_schema.py`). The last one is stricter than
+  schema validation, which cannot catch a stray field: the query schemas do not set
+  `additionalProperties: false`, so an unknown key is legal as far as the schema is concerned.
 
 ### Changed
 
@@ -168,7 +193,7 @@ label, so the same data produces the same numbers in every interface language an
 - TLS with certificate verification; the API key is stored only in the local `config.env` and
   is masked in logs.
 
-[Unreleased]: https://github.com/Foxentry/data-cleaner/compare/v1.1.0...HEAD
-[1.1.0]: https://github.com/Foxentry/data-cleaner/compare/v1.0.1...v1.1.0
+[Unreleased]: https://github.com/Foxentry/data-cleaner/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/Foxentry/data-cleaner/compare/v1.0.1...v2.0.0
 [1.0.1]: https://github.com/Foxentry/data-cleaner/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/Foxentry/data-cleaner/releases/tag/v1.0.0
