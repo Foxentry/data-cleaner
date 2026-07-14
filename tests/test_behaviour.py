@@ -48,15 +48,54 @@ def test_the_columns_that_worked_still_work(header, values, expected) -> None:
     assert _first_candidate(header, values) == expected
 
 
-@pytest.mark.parametrize("values,expected", [
-    (["Jan Sedláček", "Anna Aslan", "Eva Semerádová"], True),   # " se" is inside "Sedláček"
-    (["Ludwig van Beethoven", "Jan de Vries"], True),           # particles are part of a name
-    (["Ústí nad Labem", "Rožnov pod Radhoštěm"], False),        # "nad"/"pod" join a place name
-    (["AVANTRO s.r.o.", "SAP SE"], False),
-    (["Jan", "Eva", "Petr"], False),
+# The list of real Czech names below is the point of these tests. A helper can be made to pass
+# in isolation while the pipeline never reaches it: the first version of this suite asserted
+# `_is_full_name(["Jan Sedláček", ...])` and went green, while `suggest_mapping()` was calling
+# that column a company. Every assertion here therefore goes through `suggest_mapping()`, which
+# is what the wizard actually calls.
+COMMON_CZECH_NAMES = ["Jan Novák", "Marie Svobodová", "Petr Novotný", "Jana Dvořáková",
+                      "Josef Černý", "Eva Procházková", "Tomáš Kučera", "Lucie Veselá",
+                      "Martin Horák", "Pavel Sedláček"]
+
+
+@pytest.mark.parametrize("header", ["Zákazník", "Kontakt", "Customer", "Odběratel", "Sloupec"])
+def test_one_sedlacek_does_not_turn_a_column_into_companies(header: str) -> None:
+    """Company suffixes are matched as whole words. As substrings, " se" is inside "Sedláček"
+    and " as" inside "Aslan", and a single such value in ten flipped the whole column to
+    /company/validate."""
+    assert _first_candidate(header, COMMON_CZECH_NAMES) == "name/nameSurname"
+
+
+@pytest.mark.parametrize("values", [
+    ["Ludwig van Beethoven", "Jan de Vries", "Otto von Bismarck"],   # particles are part of a name
+    ["Anna Aslan", "Maria Asensio", "Jan Ashton"],                   # " as"
 ])
-def test_what_counts_as_a_whole_name(values, expected) -> None:
-    assert _is_full_name(values) is expected
+def test_people_are_people(values: list[str]) -> None:
+    assert _first_candidate("Zákazník", values) == "name/nameSurname"
+
+
+@pytest.mark.parametrize("header,values", [
+    ("Firma", ["Alza.cz a.s.", "ČEZ, a.s.", "Seznam.cz, a.s."]),
+    ("Sloupec", ["AVANTRO s.r.o.", "Škoda Auto a.s.", "Kofola a.s."]),
+    ("Company", ["SAP SE", "Bayer AG", "BASF SE"]),
+    ("Nazwa", ["CD Projekt Sp. z o.o.", "Allegro Sp. z o.o.", "InPost Sp. z o.o."]),
+    ("Cégnév", ["MOL Nyrt Kft.", "OTP Kft.", "Richter Kft."]),
+    # The header says "name", the values say otherwise. The values win: sending "Alza.cz a.s."
+    # to /name/validate spends a credit on a certain answer.
+    ("Jméno", ["AVANTRO s.r.o.", "Alza.cz a.s.", "ČEZ a.s."]),
+    ("Name", ["Acme Ltd", "Globex Inc", "Initech plc"]),
+])
+def test_companies_are_still_companies(header: str, values: list[str]) -> None:
+    assert _first_candidate(header, values) == "company/name"
+
+
+@pytest.mark.parametrize("values", [
+    ["Ústí nad Labem", "Rožnov pod Radhoštěm", "Kostelec nad Labem"],
+    ["Frankfurt am Main", "Newcastle upon Tyne", "Stratford upon Avon"],
+])
+def test_a_town_is_not_a_person(values: list[str]) -> None:
+    """"nad" and "pod" join the parts of a place name and never sit inside a person's name."""
+    assert _is_full_name(values) is False
 
 
 # --- The report counted words, and counted a failed correction as a rescue ------------------

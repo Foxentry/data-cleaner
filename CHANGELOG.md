@@ -130,6 +130,13 @@ first.
   and `DEFAULT_COUNTRY` overrides detection. Every new user saves the settings once, to enter
   the API key, so detection was disabled for everyone from their first run. The field now
   defaults to empty, which means "detect it from each file".
+- **A single "Sedláček" no longer turns a column of people into companies.** Legal-form markers
+  were matched as substrings, and " se" sits inside "Sedláček" while " as" sits inside "Aslan".
+  One such value in ten was enough to send a whole column of customers to the company service.
+  They are matched as whole words now (`a.s.` stays one word, so it still reads as a company).
+- **The values override a misleading header, in both directions.** A column headed *Jméno* that
+  holds `Alza.cz a.s.` is a company; a column headed *Firma* that holds people is not. What gets
+  sent is the data, not the header.
 - **A column of full names is recognised as a full name.** A column headed *Name* or *Jméno*
   holding `Jan Novák` was mapped to the *first name* field, which validates it as a first name
   and correctly reports that no such name exists. The values now decide: two or more words and
