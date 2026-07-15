@@ -36,7 +36,6 @@ from urllib.parse import urlparse, parse_qs
 from . import applog
 from . import countries
 from . import config as config_mod
-from . import __version__ as _VERSION
 from . import i18n, mapping
 from . import io_tables
 from . import __version__
@@ -1000,7 +999,7 @@ def start_server(port: int = 0, open_writer: bool = True) -> None:
     applog.set_value(cfg.LOG_DIR, cfg.log_app)
     _cleanup_logs(cfg)
     import platform as _pf
-    applog.info("Foxentry Data Cleaner %s starting", _VERSION)
+    applog.info("Foxentry Data Cleaner %s starting", __version__)
     applog.info("  platform=%s %s | python=%s | frozen=%s",
                 _pf.system(), _pf.release(), _pf.python_version(), getattr(sys, "frozen", False))
     applog.info("  data_dir=%s", config_mod.DATA_ROOT)
