@@ -315,7 +315,18 @@ def test_download_refuses_unlisted_extension(monkeypatch, tmp_path):
 
 
 def test_logfile_requires_the_exact_shape(monkeypatch, tmp_path):
-    """A log name that is not requests-<8digits>-<6digits>.jsonl is rejected before any read."""
+    """The name must match requests-[cli-]<8digits>-<6digits>.jsonl. Bad shapes and traversal
+    are rejected before any read; both the web and the CLI generators' names are accepted."""
+    from foxentry.server import _LOGFILE_RE
+    # accepted: both real generators
+    assert _LOGFILE_RE.fullmatch("requests-20260715-150950.jsonl")
+    assert _LOGFILE_RE.fullmatch("requests-cli-20260715-150950.jsonl")   # CLI log, was a false 400
+    # rejected: bad shape, traversal, an arbitrary middle segment
+    assert not _LOGFILE_RE.fullmatch("requests-x.jsonl")
+    assert not _LOGFILE_RE.fullmatch("requests-cli-x.jsonl")
+    assert not _LOGFILE_RE.fullmatch("requests-evil-20260101-000000.jsonl")
+    assert not _LOGFILE_RE.fullmatch("../config.env")
+    # and the handler still 400s a bad shape before touching disk
     assert _handler_probe(monkeypatch, tmp_path, "_logfile", "/api/logfile", "../config.env") == 400
     assert _handler_probe(monkeypatch, tmp_path, "_logfile", "/api/logfile", "requests-x.jsonl") == 400
 

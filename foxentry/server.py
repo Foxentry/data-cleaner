@@ -171,7 +171,10 @@ _RUN_LOCK = threading.Lock()
 
 
 import re as _re
-_LOGFILE_RE = _re.compile(r"requests-\d{8}-\d{6}\.jsonl")
+# Matches both generators that write into LOG_DIR: the web server's "requests-<ts>.jsonl" and
+# the CLI's "requests-cli-<ts>.jsonl". Still a strict shape (fixed prefix, fixed digit counts) -
+# CodeQL reads it the same way - it just no longer rejects a CLI log that the viewer lists.
+_LOGFILE_RE = _re.compile(r"requests-(?:cli-)?\d{8}-\d{6}\.jsonl")
 
 
 def _safe_name(name: str) -> str:
