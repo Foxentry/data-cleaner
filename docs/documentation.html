@@ -146,6 +146,7 @@
     <li><b>Results</b> land in <code>output/</code> (cleaned file + HTML report). Original columns are kept; validation columns are added.</li>
     <li><b>Stop/resume:</b> close the window or Ctrl+C anytime — re-running resumes where it stopped, without re-charging done rows.</li>
     <li><b>Encoding:</b> CSV is read/written UTF-8 (BOM for Excel). <b>Troubleshooting 401:</b> check the API key and that it isn’t IP-restricted; the app uses API version 2.1.</li>
+    <li><b>Configuration:</b> options live in <code>config.env</code> (copy from <code>config.example.env</code>), each with a comment. Among them: <code>LANGUAGE</code> and <code>DEFAULT_COUNTRY</code> (leave empty to auto-detect), <code>CONCURRENCY</code>, <code>CURRENCY</code>, and <code>UI_APP_MODE</code> — <code>on</code> opens the wizard as a chromeless app window (Chrome/Edge/Brave) when available, <code>off</code> always uses a normal browser tab.</li>
   </ul>
 
   <h2>Output file &amp; results</h2>
@@ -336,6 +337,7 @@
     <li><b>Výsledky</b> jsou v <code>output/</code> (vyčištěný soubor + HTML report). Původní sloupce zůstávají, validační se přidají.</li>
     <li><b>Přerušení/navázání:</b> okno zavřete nebo Ctrl+C kdykoli — opětovné spuštění naváže tam, kde skončilo, bez opakovaného účtování.</li>
     <li><b>Kódování:</b> CSV se čte/zapisuje v UTF‑8 (BOM pro Excel). <b>Řešení 401:</b> zkontrolujte API klíč a zda není omezený na IP; aplikace používá API verzi 2.1.</li>
+    <li><b>Konfigurace:</b> volby jsou v <code>config.env</code> (zkopírujte z <code>config.example.env</code>), každá s komentářem. Mimo jiné: <code>LANGUAGE</code> a <code>DEFAULT_COUNTRY</code> (prázdné = rozpozná se automaticky), <code>CONCURRENCY</code>, <code>CURRENCY</code> a <code>UI_APP_MODE</code> — <code>on</code> otevře průvodce jako samostatné okno bez lišty prohlížeče (Chrome/Edge/Brave), pokud je k dispozici, <code>off</code> vždy použije běžnou záložku.</li>
   </ul>
 
   <h2>Výstupní soubor a výsledky</h2>

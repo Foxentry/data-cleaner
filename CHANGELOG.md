@@ -78,6 +78,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the opposite of the truth. There is nothing to look up on the loopback interface, so it is
   not looked up.
 
+### Documentation
+
+- `UI_APP_MODE` and the other `config.env` options are pointed to from the documentation page,
+  in both languages, alongside where they already live in `config.example.env`.
+
 ### Changed
 
 - **The disk image explains itself.** The app on the left, the Applications folder on the

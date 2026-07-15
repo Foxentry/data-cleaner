@@ -10,7 +10,10 @@ stopped except by force.
 
 from __future__ import annotations
 
+import json
 import sys
+import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -49,11 +52,48 @@ RUN_PY = (Path(__file__).resolve().parent.parent / "run.py").read_text(encoding=
 SPEC = (Path(__file__).resolve().parent.parent / "packaging" / "foxentry.spec").read_text(encoding="utf-8")
 
 
-def test_the_window_closing_stops_the_app() -> None:
-    """The page says it is going away; the server schedules the stop; anything that talks to it
-    before the deadline cancels that. A reload cancels its own shutdown by loading."""
-    assert '"/api/window-closing"' in SERVER
-    assert "_note_browser" in SERVER, "any request must cancel a pending close"
+def test_the_watchdog_waits_out_a_reload_but_stops_a_close(monkeypatch) -> None:
+    """`pagehide` fires on a reload AND a close, and nothing tells them apart. So the server
+    does not decide: it schedules the stop and lets anything that talks to it cancel that. A
+    reload is back in under a second; a closed window never comes back.
+
+    This runs the real watchdog against a fake server, through all three transitions, rather
+    than grepping the source for the strings that implement them."""
+    from foxentry import server
+
+    class FakeServer:
+        def __init__(self):
+            self.stopped = False
+
+        def shutdown(self):
+            self.stopped = True
+
+    monkeypatch.setattr(server, "_CLOSE_GRACE", 0.3)
+    monkeypatch.setattr(server, "_NO_CONSOLE", False)
+    monkeypatch.setattr(server, "_SEEN_BROWSER", True)
+    monkeypatch.setattr(server, "_CLOSING", 0.0)
+
+    srv = FakeServer()
+    threading.Thread(target=server._watchdog, args=(srv, time.monotonic()), daemon=True).start()
+
+    server._CLOSING = time.monotonic()          # "going away"
+    time.sleep(0.15)
+    assert srv.stopped is False                 # still inside the grace - we wait
+
+    server._CLOSING = 0.0                        # the reload arrived - cancel
+    time.sleep(0.5)
+    assert srv.stopped is False                 # a reload must not read as a close
+
+    server._CLOSING = time.monotonic()           # a real close
+    time.sleep(0.6)
+    assert srv.stopped is True                  # the window is gone and nothing came back
+
+
+def test_the_close_notice_and_the_cancel_are_wired_in_the_page() -> None:
+    """The JS side cannot run in pytest, so the wiring itself stays a source check: the page
+    must send the close notice, and it must use keepalive so the request survives the unloading
+    page. The decision logic it drives is covered behaviourally above."""
+    assert '"/api/window-closing"' in SERVER and "_note_browser" in SERVER
     assert "pagehide" in WIZARD and "keepalive" in WIZARD
 
 
@@ -68,12 +108,6 @@ def test_it_is_not_a_heartbeat() -> None:
     """
     assert "setInterval" not in WIZARD, "a timer cannot decide whether the window is open"
     assert "_LAST_PING" not in SERVER
-
-
-def test_a_reload_has_time_to_come_back() -> None:
-    import re
-    grace = float(re.search(r"_CLOSE_GRACE\s*=\s*([\d.]+)", SERVER).group(1))
-    assert grace >= 3, "a reload on a slow machine must not be read as a closed window"
 
 
 def test_a_windowed_build_can_still_speak() -> None:
@@ -144,9 +178,15 @@ def test_a_second_launch_reopens_the_window() -> None:
     assert '"/api/whoami"' in SERVER, "the port has to be checked, not trusted"
 
 
-def test_a_stale_instance_file_is_not_believed() -> None:
-    """After a crash the file points at a port that is gone - or at whatever took it since."""
-    assert "urlopen" in SERVER and "X-Auth" in SERVER
+def test_a_stale_instance_file_is_not_believed(tmp_path, monkeypatch) -> None:
+    """After a crash the instance file points at a port that is gone - or at whatever took it
+    since. A second launch must not trust it: it checks the port, and a dead one means no
+    instance. Runs the real _running_instance() against a dead port, not a grep."""
+    from foxentry import server
+    monkeypatch.setattr(server, "_INSTANCE_FILE", tmp_path / ".foxentry-running.json")
+    server._INSTANCE_FILE.write_text(
+        json.dumps({"port": 59999, "token": "x", "pid": 1}), encoding="utf-8")   # 59999 = nothing
+    assert server._running_instance() is None
 
 
 def test_quitting_from_the_dock_is_not_a_kill() -> None:

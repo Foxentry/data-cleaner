@@ -76,9 +76,14 @@ def _fatal(exc: BaseException) -> None:
             ctypes.windll.user32.MessageBoxW(None, message, "Foxentry Data Cleaner", 0x10)
         elif sys.platform == "darwin":
             import subprocess
-            subprocess.run(["osascript", "-e",
-                            f'display alert "Foxentry Data Cleaner" message "{exc}" as critical'],
-                           check=False)
+            # The message goes in as an ARGUMENT, not baked into the script. A path in the
+            # exception text carries double quotes, and interpolating those straight into the
+            # AppleScript breaks its syntax - so the one dialog that exists to show a
+            # startup failure would itself fail, silently, inside the try/except.
+            script = ('on run argv\n'
+                      '  display alert "Foxentry Data Cleaner" message (item 1 of argv) as critical\n'
+                      'end run')
+            subprocess.run(["osascript", "-e", script, str(exc)], check=False)
         else:
             sys.stderr.write(message + "\n")
     except Exception:
