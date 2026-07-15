@@ -325,13 +325,14 @@ def test_asset_refuses_traversal_and_bad_extension(monkeypatch, tmp_path):
     assert _handler_probe(monkeypatch, tmp_path, "_asset", "/assets/", "evil.py") == 404
 
 
-def test_within_confines_to_base(tmp_path):
-    """_within resolves under base and refuses anything that escapes - including a NUL byte,
-    which makes resolve() raise and must become None, not a 500."""
-    from foxentry.server import _within
+def test_pick_file_selects_from_the_listing(tmp_path):
+    """_pick_file returns a real entry or None - the name only selects from iterdir(), so a
+    traversal string matches nothing and no request value builds a path."""
+    from foxentry.server import _pick_file
     base = tmp_path / "logs"; base.mkdir()
     (base / "ok.jsonl").write_text("{}", encoding="utf-8")
-    assert _within(base, "ok.jsonl") is not None
-    assert _within(base, "../ok.jsonl") == (base / "ok.jsonl")     # name is stripped first
-    assert _within(base, "../../etc/passwd") == (base / "passwd")  # confined, resolves inside
-    assert _within(base, "bad\x00.jsonl") is None                  # NUL -> ValueError -> None
+    assert _pick_file(base, "ok.jsonl") == base / "ok.jsonl"
+    assert _pick_file(base, "../ok.jsonl") == base / "ok.jsonl"    # stripped to name, still matches
+    assert _pick_file(base, "../../etc/passwd") is None            # "passwd" not in listing
+    assert _pick_file(base, "nonexistent.jsonl") is None
+    assert _pick_file(base, "bad\x00.jsonl") is None

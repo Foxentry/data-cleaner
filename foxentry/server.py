@@ -178,23 +178,26 @@ def _safe_name(name: str) -> str:
     return Path(name or "").name  # drop any path
 
 
-def _within(base: Path, name: str) -> Path | None:
-    """Resolve `name` under `base` and confirm it did not escape.
+def _pick_file(base: Path, name: str) -> Path | None:
+    """Return the file called `name` in `base`, or None - by SELECTING it from the directory's
+    own listing rather than building a path out of the request.
 
-    Two jobs. It is a real second line of defense - even if the filename stripping were wrong,
-    a path that resolves outside `base` is refused. And it is the barrier CodeQL reads:
-    resolve() + is_relative_to() is the shape its path-traversal query recognises as a sanitizer,
-    so the taint stops here instead of being reported as reaching an open().
-
-    A NUL byte in the name makes resolve() raise ValueError - caught here and treated as "no such
-    file", never propagated as a 500.
+    The requested name is compared against the real entries in `base`; the path that is opened
+    comes from `iterdir()`, not from the caller's string. So no request value ever reaches the
+    filesystem path - which is both genuinely traversal-proof (a `..` simply matches nothing)
+    and the shape CodeQL's path-injection query accepts as sanitised, because the tainted value
+    is used only in an equality test, never in a path expression.
     """
-    try:
-        candidate = (base / Path(name or "").name).resolve()
-        root = base.resolve()
-    except (ValueError, OSError):
+    wanted = Path(name or "").name
+    if not wanted:
         return None
-    return candidate if candidate.is_relative_to(root) else None
+    try:
+        for entry in base.iterdir():
+            if entry.name == wanted and entry.is_file():
+                return entry
+    except OSError:
+        return None
+    return None
 
 
 def _list_files(cfg) -> list[str]:
@@ -514,8 +517,8 @@ class Handler(BaseHTTPRequestHandler):
         ext = Path(safe).suffix.lower()
         if not safe or ext not in types:
             self.send_response(404); self.end_headers(); return
-        path = _within(_ASSETS, safe)
-        if path is None or not path.is_file():
+        path = _pick_file(_ASSETS, safe)
+        if path is None:
             self.send_response(404); self.end_headers(); return
         data = path.read_bytes()
         self.send_response(200)
@@ -892,8 +895,8 @@ class Handler(BaseHTTPRequestHandler):
         safe = _safe_name(name)
         if not _LOGFILE_RE.fullmatch(safe):
             self.send_response(400); self.end_headers(); return
-        path = _within(config_mod.LOG_DIR, safe)
-        if path is None or not path.is_file():
+        path = _pick_file(config_mod.LOG_DIR, safe)
+        if path is None:
             self.send_response(404); self.end_headers(); return
         data = path.read_bytes()
         self.send_response(200)
@@ -910,8 +913,8 @@ class Handler(BaseHTTPRequestHandler):
         # directory confinement below.
         if Path(safe).suffix.lower() not in (".csv", ".html", ".xlsx"):
             self.send_response(404); self.end_headers(); return
-        path = _within(cfg.OUTPUT_DIR, safe)
-        if path is None or not path.is_file():
+        path = _pick_file(cfg.OUTPUT_DIR, safe)
+        if path is None:
             self.send_response(404); self.end_headers(); return
         ctype = ("text/html; charset=utf-8" if safe.endswith(".html")
                  else "text/csv; charset=utf-8" if safe.endswith(".csv")
