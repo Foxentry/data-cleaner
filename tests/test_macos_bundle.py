@@ -279,3 +279,59 @@ def test_startup_records_the_environment() -> None:
     """A bad report is undebuggable without knowing the platform, the build, and where files
     went. The startup lines carry all three."""
     assert "platform=%s" in SERVER and "frozen=%s" in SERVER and "data_dir=%s" in SERVER
+
+
+# --- Path-traversal handlers: _asset / _logfile / _download ------------------------------
+# CodeQL flagged these as "user data in a path expression". The names are stripped and the
+# resolved path is confined to its directory; these run the real handlers to prove it.
+
+def _handler_probe(monkeypatch, tmp_path, method_name, url_path, query_name):
+    """Drive one file handler with a traversal payload and return the HTTP status, without a
+    real socket - a fake handler instance with just enough plumbing."""
+    from foxentry import server
+
+    class Fake(server.Handler):
+        def __init__(self):
+            self.sent = None
+            self.wfile = __import__("io").BytesIO()
+            self.headers = {}
+        def send_response(self, code): self.sent = code
+        def send_header(self, *a): pass
+        def end_headers(self): pass
+    h = Fake()
+    getattr(h, method_name)(query_name)
+    return h.sent
+
+
+def test_download_refuses_traversal(monkeypatch, tmp_path):
+    """`?name=../../etc/passwd` must not read outside output/."""
+    status = _handler_probe(monkeypatch, tmp_path, "_download", "/download", "../../../../etc/passwd")
+    assert status == 404
+
+
+def test_download_refuses_unlisted_extension(monkeypatch, tmp_path):
+    """Only the kinds the app writes (csv/html/xlsx) are downloadable."""
+    assert _handler_probe(monkeypatch, tmp_path, "_download", "/download", "secrets.env") == 404
+
+
+def test_logfile_requires_the_exact_shape(monkeypatch, tmp_path):
+    """A log name that is not requests-<8digits>-<6digits>.jsonl is rejected before any read."""
+    assert _handler_probe(monkeypatch, tmp_path, "_logfile", "/api/logfile", "../config.env") == 400
+    assert _handler_probe(monkeypatch, tmp_path, "_logfile", "/api/logfile", "requests-x.jsonl") == 400
+
+
+def test_asset_refuses_traversal_and_bad_extension(monkeypatch, tmp_path):
+    assert _handler_probe(monkeypatch, tmp_path, "_asset", "/assets/", "../../server.py") == 404
+    assert _handler_probe(monkeypatch, tmp_path, "_asset", "/assets/", "evil.py") == 404
+
+
+def test_within_confines_to_base(tmp_path):
+    """_within resolves under base and refuses anything that escapes - including a NUL byte,
+    which makes resolve() raise and must become None, not a 500."""
+    from foxentry.server import _within
+    base = tmp_path / "logs"; base.mkdir()
+    (base / "ok.jsonl").write_text("{}", encoding="utf-8")
+    assert _within(base, "ok.jsonl") is not None
+    assert _within(base, "../ok.jsonl") == (base / "ok.jsonl")     # name is stripped first
+    assert _within(base, "../../etc/passwd") == (base / "passwd")  # confined, resolves inside
+    assert _within(base, "bad\x00.jsonl") is None                  # NUL -> ValueError -> None

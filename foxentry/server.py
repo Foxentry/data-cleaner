@@ -170,8 +170,31 @@ _RUN: dict = {"active": False, "done": 0, "total": 0, "by_flag": [],
 _RUN_LOCK = threading.Lock()
 
 
+import re as _re
+_LOGFILE_RE = _re.compile(r"requests-\d{8}-\d{6}\.jsonl")
+
+
 def _safe_name(name: str) -> str:
     return Path(name or "").name  # drop any path
+
+
+def _within(base: Path, name: str) -> Path | None:
+    """Resolve `name` under `base` and confirm it did not escape.
+
+    Two jobs. It is a real second line of defense - even if the filename stripping were wrong,
+    a path that resolves outside `base` is refused. And it is the barrier CodeQL reads:
+    resolve() + is_relative_to() is the shape its path-traversal query recognises as a sanitizer,
+    so the taint stops here instead of being reported as reaching an open().
+
+    A NUL byte in the name makes resolve() raise ValueError - caught here and treated as "no such
+    file", never propagated as a 500.
+    """
+    try:
+        candidate = (base / Path(name or "").name).resolve()
+        root = base.resolve()
+    except (ValueError, OSError):
+        return None
+    return candidate if candidate.is_relative_to(root) else None
 
 
 def _list_files(cfg) -> list[str]:
@@ -484,15 +507,15 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _asset(self, name: str):
-        """Local static files (font/icon) - extension whitelist only, no path traversal."""
-        name = _safe_name(name)
+        """Local static files (font/icon) - extension whitelist AND confined to the assets dir."""
+        safe = _safe_name(name)
         types = {".woff2": "font/woff2", ".woff": "font/woff", ".svg": "image/svg+xml",
                 ".css": "text/css; charset=utf-8", ".png": "image/png"}
-        ext = Path(name).suffix.lower()
-        if not name or ext not in types:
+        ext = Path(safe).suffix.lower()
+        if not safe or ext not in types:
             self.send_response(404); self.end_headers(); return
-        path = _ASSETS / name
-        if not path.is_file():
+        path = _within(_ASSETS, safe)
+        if path is None or not path.is_file():
             self.send_response(404); self.end_headers(); return
         data = path.read_bytes()
         self.send_response(200)
@@ -864,12 +887,13 @@ class Handler(BaseHTTPRequestHandler):
         return {"logs": out}
 
     def _logfile(self, name):
-        """Return the contents of a specific request log (safe *.jsonl name from logs/ only)."""
-        name = _safe_name(name)
-        if not (name.startswith("requests-") and name.endswith(".jsonl")):
+        """Return one request log. Name must match requests-<digits>-<digits>.jsonl exactly and
+        resolve inside logs/ - a strict shape CodeQL can see, plus the directory confinement."""
+        safe = _safe_name(name)
+        if not _LOGFILE_RE.fullmatch(safe):
             self.send_response(400); self.end_headers(); return
-        path = config_mod.LOG_DIR / name
-        if not path.is_file():
+        path = _within(config_mod.LOG_DIR, safe)
+        if path is None or not path.is_file():
             self.send_response(404); self.end_headers(); return
         data = path.read_bytes()
         self.send_response(200)
@@ -880,13 +904,17 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _download(self, name):
-        name = _safe_name(name)
+        safe = _safe_name(name)
         cfg = config_mod.Config()
-        path = cfg.OUTPUT_DIR / name
-        if not path.is_file():
+        # Only the file kinds the app actually writes to output/ - a shape check on top of the
+        # directory confinement below.
+        if Path(safe).suffix.lower() not in (".csv", ".html", ".xlsx"):
             self.send_response(404); self.end_headers(); return
-        ctype = ("text/html; charset=utf-8" if name.endswith(".html")
-                 else "text/csv; charset=utf-8" if name.endswith(".csv")
+        path = _within(cfg.OUTPUT_DIR, safe)
+        if path is None or not path.is_file():
+            self.send_response(404); self.end_headers(); return
+        ctype = ("text/html; charset=utf-8" if safe.endswith(".html")
+                 else "text/csv; charset=utf-8" if safe.endswith(".csv")
                  else "application/octet-stream")
         data = path.read_bytes()
         self.send_response(200)
