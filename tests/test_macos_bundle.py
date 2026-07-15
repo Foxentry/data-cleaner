@@ -10,7 +10,6 @@ stopped except by force.
 
 from __future__ import annotations
 
-import json
 import sys
 import threading
 import time
@@ -177,17 +176,20 @@ def test_a_second_launch_finds_the_first_by_the_port(tmp_path, monkeypatch) -> N
 
     Here: hold the first port, then check that _bind_or_find_running() reports it as ours rather
     than starting a second server."""
-    import socket
     from foxentry import server
 
     first = server.LoopbackServer(("127.0.0.1", 0), server.Handler)
     held = first.server_address[1]
     monkeypatch.setattr(server, "_PORTS", (held,))
-    monkeypatch.setattr(server, "_our_app_answers", lambda port: True)  # it IS us on that port
 
     import threading
     threading.Thread(target=first.serve_forever, daemon=True).start()
+    time.sleep(0.3)
     try:
+        # No stub on _our_app_answers: it really probes /api/whoami. That endpoint must answer
+        # before the Host check, because a second launch cannot forge the running port's Host
+        # header - the bug that made this silently start a second server.
+        assert server._our_app_answers(held) is True
         srv, port = server._bind_or_find_running()
         assert srv is None, "a second launch must not start its own server on our port"
         assert port == held

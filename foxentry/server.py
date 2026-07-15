@@ -376,42 +376,26 @@ class Handler(BaseHTTPRequestHandler):
         self._note_browser()
         path = urlparse(self.path)
         p = path.path
+        if p == "/api/whoami":
+            # Answered before the Host check: a second launch probes this to see if the port is
+            # ours, and it cannot know our port to build a matching Host. Constant string, no
+            # data, no filesystem - nothing to guard.
+            return self._whoami()
         if p.startswith("/api/") and not self._api_auth("GET"):
             return
-        if p in ("/", "/index.html"):
-            return self._file_token(_WIZARD)
-        if p in ("/manual", "/documentation.html"):
-            return self._serve_file(config_mod.RESOURCE_ROOT / "docs" / "documentation.html",
-                                 "text/html; charset=utf-8")
-        if p in ("/setup", "/setup-guide.html"):
-            return self._serve_file(config_mod.RESOURCE_ROOT / "docs" / "setup-guide.html",
-                                 "text/html; charset=utf-8")
-        if p in ("/logs", "/log-viewer.html"):
-            return self._file_token(config_mod.RESOURCE_ROOT / "docs" / "log-viewer.html")
         if p.startswith("/assets/"):
             return self._asset(p[len("/assets/"):])
-        if p == "/api/logs":
-            return self._json(self._list_logs())
+        constant = self._GET_ROUTES.get(p)
+        if constant is not None:
+            return constant(self)
+        # Routes that read query parameters - kept explicit so the input is visible.
         if p == "/api/logfile":
-            q = parse_qs(path.query)
-            return self._logfile(q.get("name", [""])[0])
-        if p == "/api/init":
-            return self._init()
+            return self._logfile(parse_qs(path.query).get("name", [""])[0])
         if p == "/api/schema":
             q = parse_qs(path.query)
             return self._schema(q.get("lang", [""])[0], q.get("country", [""])[0])
-        if p == "/api/config":
-            return self._json(config_mod.read_config_values())
-        if p == "/api/whoami":
-            # Asked by a second launch: is this port ours, or did something else take it?
-            return self._json({"app": "foxentry-data-cleaner"})
-
-        if p == "/api/progress":
-            with _RUN_LOCK:
-                return self._json(dict(_RUN))
         if p == "/download":
-            q = parse_qs(path.query)
-            return self._download(q.get("name", [""])[0])
+            return self._download(parse_qs(path.query).get("name", [""])[0])
         if p == "/favicon.ico":
             self.send_response(204); self.end_headers(); return
         self.send_response(404); self.end_headers()
@@ -424,36 +408,37 @@ class Handler(BaseHTTPRequestHandler):
             self._note_browser()        # ... but the closing notice must not cancel itself
         if p.startswith("/api/") and not self._api_auth("POST"):
             return
-        if p == "/api/config":
-            return self._save_config()
-        if p == "/api/quit":
-            return self._quit()
-        if p == "/api/window-closing":
-            # `pagehide`: the page is going away. It may be a reload - see _watchdog.
-            global _CLOSING
-            _CLOSING = time.monotonic()
-            return self._json({"ok": True})
-        if p == "/api/logs/clear":
-            return self._json(self._delete_logs())
+        constant = self._POST_ROUTES.get(p)
+        if constant is not None:
+            return constant(self)
         if p == "/api/upload":
-            q = parse_qs(path.query)
-            return self._upload(q.get("name", [""])[0])
-        if p == "/api/preview":
-            return self._preview()
-        if p == "/api/install-xlsx":
-            return self._install_xlsx()
-        if p == "/api/estimate":
-            return self._estimate()
-        if p == "/api/run":
-            return self._run()
-        if p == "/api/session":
-            _save_session_record(self._body())
-            return self._json({"ok": True})
-        if p == "/api/reset":
-            return self._reset()
+            return self._upload(parse_qs(path.query).get("name", [""])[0])
         self.send_response(404); self.end_headers()
 
     # ---------- implementation ----------
+    def _whoami(self):
+        # Asked by a second launch: is this port ours, or something else on it?
+        return self._json({"app": "foxentry-data-cleaner"})
+
+    def _progress(self):
+        with _RUN_LOCK:
+            return self._json(dict(_RUN))
+
+    def _window_closing(self):
+        # `pagehide`: the page is going away. It may be a reload - see _watchdog.
+        global _CLOSING
+        _CLOSING = time.monotonic()
+        return self._json({"ok": True})
+
+    def _session(self):
+        _save_session_record(self._body())
+        return self._json({"ok": True})
+
+    # Constant routes - route key in, fixed handler out, no request data on the path. Defined
+    # after the methods they name; assigned below the class body.
+    _GET_ROUTES: dict = {}
+    _POST_ROUTES: dict = {}
+
     def _note_browser(self) -> None:
         """Something is talking to us, so the window is open. If a close was pending, it was a
         reload: cancel it."""
@@ -937,9 +922,16 @@ def _cleanup_logs(cfg) -> None:
 # signal that a copy is already running - no lock file to go stale, no race to write it, no
 # second request to confirm it. This is how a local web tool tells itself apart from itself.
 #
-# The list gives a couple of fallbacks in case something unrelated already holds the first
-# port. They are in the IANA dynamic range and unlikely to collide.
-_PORTS = (8783, 8784, 8785)
+# These sit in the user-port range (1024-49151), picked to be uncommon rather than to be in
+# any particular IANA band. If something unrelated already holds one, the app steps to the next
+# - six of them so that a machine busy enough to have taken several still leaves one free.
+#
+# Known limitation: a loopback port is shared across the OS users of one machine. If user A is
+# running the app and user B launches it, B's bind fails, the probe says "it's foxentry", and
+# B's browser opens A's instance - whose POSTs B cannot make (different session token). Narrow
+# case (two users on one desktop machine at once); accepted for now rather than deriving the
+# port from the UID.
+_PORTS = (8783, 8784, 8785, 8786, 8787, 8788)
 
 
 def _our_app_answers(port: int) -> bool:
@@ -973,6 +965,34 @@ def _bind_or_find_running() -> tuple[LoopbackServer | None, int]:
         return None, taken_by_us
     raise OSError("no free port for Foxentry Data Cleaner in %s" % (_PORTS,))
 
+
+Handler._GET_ROUTES = {
+    "/": lambda h: h._file_token(_WIZARD),
+    "/index.html": lambda h: h._file_token(_WIZARD),
+    "/manual": lambda h: h._serve_file(config_mod.RESOURCE_ROOT / "docs" / "documentation.html", "text/html; charset=utf-8"),
+    "/documentation.html": lambda h: h._serve_file(config_mod.RESOURCE_ROOT / "docs" / "documentation.html", "text/html; charset=utf-8"),
+    "/setup": lambda h: h._serve_file(config_mod.RESOURCE_ROOT / "docs" / "setup-guide.html", "text/html; charset=utf-8"),
+    "/setup-guide.html": lambda h: h._serve_file(config_mod.RESOURCE_ROOT / "docs" / "setup-guide.html", "text/html; charset=utf-8"),
+    "/logs": lambda h: h._file_token(config_mod.RESOURCE_ROOT / "docs" / "log-viewer.html"),
+    "/log-viewer.html": lambda h: h._file_token(config_mod.RESOURCE_ROOT / "docs" / "log-viewer.html"),
+    "/api/logs": lambda h: h._json(h._list_logs()),
+    "/api/init": lambda h: h._init(),
+    "/api/config": lambda h: h._json(config_mod.read_config_values()),
+    "/api/whoami": lambda h: h._whoami(),
+    "/api/progress": lambda h: h._progress(),
+}
+Handler._POST_ROUTES = {
+    "/api/config": lambda h: h._save_config(),
+    "/api/quit": lambda h: h._quit(),
+    "/api/window-closing": lambda h: h._window_closing(),
+    "/api/logs/clear": lambda h: h._json(h._delete_logs()),
+    "/api/preview": lambda h: h._preview(),
+    "/api/install-xlsx": lambda h: h._install_xlsx(),
+    "/api/estimate": lambda h: h._estimate(),
+    "/api/run": lambda h: h._run(),
+    "/api/session": lambda h: h._session(),
+    "/api/reset": lambda h: h._reset(),
+}
 
 def start_server(port: int = 0, open_writer: bool = True) -> None:
     global _PORT
