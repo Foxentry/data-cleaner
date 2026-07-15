@@ -28,6 +28,7 @@ import signal
 import threading
 import time
 import socketserver
+import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
@@ -122,7 +123,14 @@ def _save_run_summary(file: str, summary: dict) -> None:
 # and `confirm()` blocks the event loop entirely. Either would look exactly like a closed
 # window. Switching to Excel for two minutes would have killed the app.
 _CLOSE_GRACE = 5.0         # a reload has this long to come back
-_OPEN_GRACE = 180.0        # the browser has this long to appear at all
+_OPEN_GRACE = 180.0        # the browser has this long to appear at all - see _NO_CONSOLE
+
+# Giving up when no browser ever arrives is only right where the app has no console. A windowed
+# build that fails to open one is an invisible process nobody can stop, so it must not linger.
+# Linux is not that: it runs in a terminal, prints its URL, and Ctrl+C works. People copy that
+# URL and open it by hand, or forward the port over SSH and open it minutes later - and the app
+# has to still be there when they do.
+_NO_CONSOLE = getattr(sys, "frozen", False) and sys.platform in ("win32", "darwin")
 
 class LoopbackServer(ThreadingHTTPServer):
     """The stock server asks the network who we are. We already know.
@@ -152,8 +160,8 @@ def _watchdog(server, started: float) -> None:
         now = time.monotonic()
         if _CLOSING and now - _CLOSING > _CLOSE_GRACE:
             break                       # the window went away and nothing came back
-        if not _SEEN_BROWSER and now - started > _OPEN_GRACE:
-            break                       # no browser ever arrived - do not linger forever
+        if _NO_CONSOLE and not _SEEN_BROWSER and now - started > _OPEN_GRACE:
+            break                       # invisible, and no browser came - do not linger forever
     threading.Thread(target=server.shutdown, daemon=True).start()
 
 
@@ -966,6 +974,11 @@ def start_server(port: int = 0, open_writer: bool = True) -> None:
     _cleanup_logs(cfg)
     applog.info("Server starting (port=%s, concurrency=%s, api_version=%s)",
                 port or "auto", cfg.concurrency, cfg.api_version)
+    # Must happen on the main thread, before the server takes it over.
+    if open_writer:
+        from . import applaunch
+        applaunch.show_in_dock()
+
     server = LoopbackServer(("127.0.0.1", port), Handler)
     actual_port = server.server_address[1]
     _PORT = actual_port

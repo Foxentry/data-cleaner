@@ -75,3 +75,48 @@ def open_ui(url: str, app_mode: bool = True) -> str:
     except Exception:
         pass
     return "none"
+
+
+def show_in_dock() -> bool:
+    """Ask macOS to keep this process in the Dock.
+
+    The app is a Python process that runs a web server; the window it shows is a browser
+    window. macOS gives a Dock icon to processes that register with the window server, and a
+    plain Python process never does - the icon appears for a moment at launch and is dropped.
+    `LSUIElement: false` in the bundle does not change that: there is nothing to hold the icon.
+
+    So we register: `[[NSApplication sharedApplication] setActivationPolicy:Regular]`, called
+    straight through the Objective-C runtime with ctypes. No new dependency, about thirty lines.
+
+    If any of it fails, we carry on without a Dock icon - exactly as before. A missing icon is a
+    blemish; an app that will not start is not.
+    """
+    if sys.platform != "darwin":
+        return False
+    try:
+        import ctypes
+        import ctypes.util
+
+        objc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("objc"))
+        ctypes.cdll.LoadLibrary("/System/Library/Frameworks/AppKit.framework/AppKit")
+
+        objc.objc_getClass.restype = ctypes.c_void_p
+        objc.objc_getClass.argtypes = [ctypes.c_char_p]
+        objc.sel_registerName.restype = ctypes.c_void_p
+        objc.sel_registerName.argtypes = [ctypes.c_char_p]
+
+        # objc_msgSend has no single signature - it is cast per call.
+        send_id = ctypes.cast(objc.objc_msgSend,
+                              ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p))
+        send_policy = ctypes.cast(objc.objc_msgSend,
+                                  ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_void_p,
+                                                   ctypes.c_void_p, ctypes.c_long))
+
+        app_class = objc.objc_getClass(b"NSApplication")
+        app = send_id(app_class, objc.sel_registerName(b"sharedApplication"))
+        if not app:
+            return False
+        # NSApplicationActivationPolicyRegular = 0: an app with a Dock icon.
+        return bool(send_policy(app, objc.sel_registerName(b"setActivationPolicy:"), 0))
+    except Exception:
+        return False

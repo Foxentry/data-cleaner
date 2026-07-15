@@ -166,3 +166,30 @@ def test_every_build_gets_its_own_number() -> None:
     assert "_BUILD" in SPEC
     assert 'os.environ.get("FOXENTRY_BUILD")' in SPEC
     assert '"CFBundleVersion": f"{_APP_VERSION}.{_BUILD}"' in SPEC
+
+
+APPLAUNCH = (Path(__file__).resolve().parent.parent / "foxentry" / "applaunch.py").read_text(encoding="utf-8")
+
+
+def test_the_dock_icon_cannot_break_the_app() -> None:
+    """A Python process gets no Dock icon on its own: it never registers with the window server,
+    and `LSUIElement: false` cannot hold an icon nobody is holding. We register through the
+    Objective-C runtime - and if that fails for any reason, the app runs without an icon rather
+    than not running."""
+    assert "setActivationPolicy:" in APPLAUNCH
+    assert "except Exception:" in APPLAUNCH, "a missing icon must never stop the app starting"
+
+
+def test_it_does_nothing_off_macos(monkeypatch) -> None:
+    import sys as _sys
+    from foxentry import applaunch
+    monkeypatch.setattr(_sys, "platform", "win32")
+    assert applaunch.show_in_dock() is False
+
+
+def test_linux_is_not_abandoned_when_no_browser_opens() -> None:
+    """The give-up timer exists because a windowed build with no browser is an invisible process
+    nobody can stop. Linux is run from a terminal: it prints its URL, Ctrl+C works, and people
+    open that URL by hand or forward the port over SSH minutes later. It has to still be there."""
+    assert "_NO_CONSOLE and not _SEEN_BROWSER" in SERVER
+    assert 'sys.platform in ("win32", "darwin")' in SERVER

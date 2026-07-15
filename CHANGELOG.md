@@ -35,6 +35,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Linux keeps its console and its patience.** The build stays a single file with a terminal,
+  and the app does not give up when no browser opens: people copy the URL it prints and open it
+  by hand, or forward the port over SSH and open it minutes later. Giving up on a missing
+  browser is only right for a windowed build, where it would otherwise be an invisible process
+  nobody can stop.
+- **The app appears in the Dock on macOS.** It is a Python process running a web server, and
+  such a process never registers with the window server, so macOS showed its icon for a moment
+  at launch and dropped it - `LSUIElement: false` cannot hold an icon nobody is holding. It now
+  registers as a regular application. If that fails, the app runs without an icon rather than
+  not running.
 - **Every build carries its own build number.** macOS caches `Info.plist` per bundle identifier
   and version: builds that all called themselves the same thing meant the system read the plist
   from whichever it saw first and ignored the rest, so a change to it looked like it had not
