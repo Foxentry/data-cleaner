@@ -9,6 +9,7 @@ Default: opens the wizard in the browser (local server).
 Text mode (no browser):
   python run.py --cli
 """
+from __future__ import annotations
 
 import sys
 
