@@ -58,7 +58,7 @@ jobs:
         run: python tools/check_action_pins.py
 
       - name: No undefined names or unused imports
-        run: python -m pyflakes foxentry/*.py tools/*.py
+        run: python -m pyflakes foxentry/*.py tools/*.py run.py tests/*.py
 
       - name: Tests
         run: python -m pytest tests -q

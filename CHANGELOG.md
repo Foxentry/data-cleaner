@@ -7,6 +7,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-07-14
+
+### Added
+
+- **macOS ships as an app in a disk image.** Download `FoxentryDataCleaner-macos.dmg`, open it,
+  drag the app to Applications, double-click. That is the whole thing. 2.0.0 shipped a bare Unix
+  executable: a browser download strips its execute bit and Finder cannot open an extensionless
+  file, so it needed a terminal and `chmod +x`. The disk image is now the only macOS download;
+  for the command line the binary is inside the app:
+  `"/Applications/Foxentry Data Cleaner.app/Contents/MacOS/FoxentryDataCleaner" --cli`.
+- **The notarization ticket is stapled** to the app and to the disk image, so Gatekeeper clears
+  them without asking Apple. A bare binary cannot be stapled, which is why 2.0.0 needed an
+  internet connection on first launch.
+- **The browser window is the app.** Close it and the app stops. The page says it is going
+  away, the server schedules the stop, and anything that talks to it before the deadline cancels
+  that - which is how a reload survives: it loads again and cancels its own shutdown. Switching
+  to another window changes nothing, because nothing is being counted.
+- **No console window on Windows and macOS.** The black box behind the browser is gone: people
+  closed it by accident or left it running for days. Output goes to `logs/app.log`, and a
+  failure to start puts up a native dialog rather than vanishing. `--cli` attaches to the
+  console it was launched from. Linux keeps its console: it has no bundle and is run from a
+  terminal anyway.
+- **A Quit button in the wizard.** The app is a local server, and it used to be stopped with
+  Ctrl+C in the console it prints to. A macOS app has no console. It works on every platform,
+  and it ends the black window on Windows that people used to leave running for days.
+
+### Fixed
+
+- **Linux keeps its console and its patience.** The build stays a single file with a terminal,
+  and the app does not give up when no browser opens: people copy the URL it prints and open it
+  by hand, or forward the port over SSH and open it minutes later. Giving up on a missing
+  browser is only right for a windowed build, where it would otherwise be an invisible process
+  nobody can stop.
+- **Failures are written to the log.** A crash inside a request handler used to produce a
+  blank page and an empty `app.log` - nothing to debug from. Every handler error is now logged
+  with a traceback and returned as a clear 500, the server's own HTTP errors reach the log
+  too (silencing the access log had thrown them away), and startup records the platform, the
+  build and where the app keeps its files.
+- **No Dock icon on macOS.** Registering as a regular app did put one there, but a Python
+  process serving a browser has no AppKit run loop behind it: the icon bounced without end and
+  answered no clicks, which is worse than not being there. A real Dock presence, and bringing
+  the window back on relaunch, both need a native macOS app; tracked as a follow-up.
+- **Every build carries its own build number.** macOS caches `Info.plist` per bundle identifier
+  and version: builds that all called themselves the same thing meant the system read the plist
+  from whichever it saw first and ignored the rest, so a change to it looked like it had not
+  worked when in fact it had never been read.
+- **The app claims a fixed port** (8783, or the next free one) instead of a random one, so a
+  second launch can tell a copy is already running: it cannot bind the port, and that failed
+  bind is the signal - decided by the operating system, with no lock file to go stale. On
+  Windows and Linux, where a second launch is a new process, it reopens the running window
+  instead of starting a second server. On macOS the system activates the running app without
+  starting a second process, so the window is not brought back there yet - a native fix is
+  tracked as a follow-up. The fixed port also means one address to allowlist behind a firewall.
+- **Cmd+Q stops the app the way the Quit button does**, rather than interrupting it in the
+  middle of writing a row.
+- **The macOS app can reach the API at all.** Every call failed with "unable to get local
+  issuer certificate": `ssl.create_default_context()` asks OpenSSL for the system roots, and a
+  frozen build on macOS gets none, because macOS keeps its roots in a keychain rather than a
+  file. The roots are now read from the keychain - both of them, so a company's TLS-inspecting
+  proxy is trusted too. Verification is never turned off.
+- **The macOS app starts at once.** It was packed as a single file, so every launch unpacked
+  40 MB of interpreter into a temporary folder before the window appeared - about four seconds
+  of an icon twitching in the Dock. Inside a bundle there is nothing to be portable about, so
+  the files simply lie next to each other now. Windows and Linux stay a single file: that is
+  the whole point of them.
+- **macOS no longer asks to "find devices on your local network".** The server binds to
+  `127.0.0.1` and never leaves it, but the standard library resolves the host name on bind
+  (`socket.getfqdn`), and on macOS that goes out over mDNS - which is what macOS 15 was asking
+  about. For a tool whose whole pitch is that the data stays on the machine, that dialog said
+  the opposite of the truth. There is nothing to look up on the loopback interface, so it is
+  not looked up.
+
+### Documentation
+
+- `UI_APP_MODE` and the other `config.env` options are pointed to from the documentation page,
+  in both languages, alongside where they already live in `config.example.env`.
+
+### Changed
+
+- **The disk image explains itself.** The app on the left, the Applications folder on the
+  right, an arrow between them. A plain image is two icons in an empty window, and the first
+  person to open one ran the app from the disk image instead of installing it - which is the
+  one thing a disk image exists to prevent.
+- **The macOS app keeps its folder in `~/Documents/Foxentry Data Cleaner`** (`config.env`,
+  `input/`, `output/`, `logs/`). It cannot write inside the app bundle: that breaks the code
+  signature, and in `/Applications` it has no right to. Windows and Linux are unchanged - the
+  executable stays portable and keeps its folder next to itself.
+
+
 ## [2.0.0] - 2026-07-14
 
 This release makes the tool country-aware. It also corrects how results are counted: every
@@ -229,7 +318,8 @@ first.
 - TLS with certificate verification; the API key is stored only in the local `config.env` and
   is masked in logs.
 
-[Unreleased]: https://github.com/Foxentry/data-cleaner/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/Foxentry/data-cleaner/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/Foxentry/data-cleaner/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/Foxentry/data-cleaner/compare/v1.0.1...v2.0.0
 [1.0.1]: https://github.com/Foxentry/data-cleaner/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/Foxentry/data-cleaner/releases/tag/v1.0.0

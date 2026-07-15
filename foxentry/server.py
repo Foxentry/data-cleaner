@@ -21,9 +21,13 @@ No other connections; all work is local except Foxentry API calls.
 from __future__ import annotations
 
 import json
+import urllib.request
 import secrets
+import signal
 import threading
 import time
+import socketserver
+import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
@@ -106,14 +110,97 @@ def _save_run_summary(file: str, summary: dict) -> None:
         pass
 
 # last run state (local, single user)
+# The browser window IS the app. Close it and the app stops.
+#
+# The page tells us when it is going away (`pagehide`). That fires on a reload too, and nothing
+# in the event says which it was - so we do not decide, we WAIT. A close is scheduled, and any
+# request that arrives before the deadline cancels it. A reload is back in under a second and
+# cancels its own shutdown; a closed window never comes back.
+#
+# This is why it is not a heartbeat. A heartbeat has to survive everything that stops a timer,
+# and browsers stop timers all the time: a background tab is throttled to one tick per MINUTE,
+# and `confirm()` blocks the event loop entirely. Either would look exactly like a closed
+# window. Switching to Excel for two minutes would have killed the app.
+_CLOSE_GRACE = 5.0         # a reload has this long to come back
+_OPEN_GRACE = 180.0        # the browser has this long to appear at all - see _NO_CONSOLE
+
+# Giving up when no browser ever arrives is only right where the app has no console. A windowed
+# build that fails to open one is an invisible process nobody can stop, so it must not linger.
+# Linux is not that: it runs in a terminal, prints its URL, and Ctrl+C works. People copy that
+# URL and open it by hand, or forward the port over SSH and open it minutes later - and the app
+# has to still be there when they do.
+_NO_CONSOLE = getattr(sys, "frozen", False) and sys.platform in ("win32", "darwin")
+
+class LoopbackServer(ThreadingHTTPServer):
+    """The stock server asks the network who we are. We already know.
+
+    `HTTPServer.server_bind()` calls `socket.getfqdn(host)` to fill in `server_name`. On macOS
+    that resolution goes out over mDNS/Bonjour - and macOS 15 then asks the user to "allow
+    Foxentry Data Cleaner to find devices on your local network". For an app whose entire
+    pitch is that the data stays on the machine, that dialog is worse than a bug: it says the
+    opposite of the truth, and the honest answer to it is No.
+
+    We never leave the loopback interface, so there is nothing to look up. Bind, and skip it.
+    """
+
+    def server_bind(self) -> None:
+        socketserver.TCPServer.server_bind(self)      # NOT HTTPServer's - that is the one that resolves
+        self.server_name = "127.0.0.1"
+        self.server_port = self.server_address[1]
+
+
+_CLOSING: float = 0.0      # when the page said it was going away; 0 = it did not
+_SEEN_BROWSER = False
+
+
+def _watchdog(server, started: float) -> None:
+    while True:
+        time.sleep(0.5)
+        now = time.monotonic()
+        if _CLOSING and now - _CLOSING > _CLOSE_GRACE:
+            break                       # the window went away and nothing came back
+        if _NO_CONSOLE and not _SEEN_BROWSER and now - started > _OPEN_GRACE:
+            break                       # invisible, and no browser came - do not linger forever
+    threading.Thread(target=server.shutdown, daemon=True).start()
+
+
 _RUN: dict = {"active": False, "done": 0, "total": 0, "by_flag": [],
               "calls": 0, "errors": 0, "finished": False, "ok": True,
               "outputs": [], "message": "", "run_time": 0.0, "jobs": []}
 _RUN_LOCK = threading.Lock()
 
 
+import re as _re
+# Matches both generators that write into LOG_DIR: the web server's "requests-<ts>.jsonl" and
+# the CLI's "requests-cli-<ts>.jsonl". Still a strict shape (fixed prefix, fixed digit counts) -
+# CodeQL reads it the same way - it just no longer rejects a CLI log that the viewer lists.
+_LOGFILE_RE = _re.compile(r"requests-(?:cli-)?\d{8}-\d{6}\.jsonl")
+
+
 def _safe_name(name: str) -> str:
     return Path(name or "").name  # drop any path
+
+
+def _pick_file(base: Path, name: str) -> Path | None:
+    """Return the file called `name` in `base`, or None - by SELECTING it from the directory's
+    own listing rather than building a path out of the request.
+
+    The requested name is compared against the real entries in `base`; the path that is opened
+    comes from `iterdir()`, not from the caller's string. So no request value ever reaches the
+    filesystem path - which is both genuinely traversal-proof (a `..` simply matches nothing)
+    and the shape CodeQL's path-injection query accepts as sanitised, because the tainted value
+    is used only in an equality test, never in a path expression.
+    """
+    wanted = Path(name or "").name
+    if not wanted:
+        return None
+    try:
+        for entry in base.iterdir():
+            if entry.name == wanted and entry.is_file():
+                return entry
+    except OSError:
+        return None
+    return None
 
 
 def _list_files(cfg) -> list[str]:
@@ -237,9 +324,14 @@ def _start_run(cfg, input_file: Path, rows, header, tasks, limit, log_run=False)
 
 
 class Handler(BaseHTTPRequestHandler):
-    # silence the console
+    # The stock handler writes a line per request to stderr. We do not want the access spam,
+    # but its ERROR path is how a 400/500 gets recorded - silencing all of it (which is what
+    # `pass` did) threw those away too, and left app.log with nothing when a request failed.
     def log_message(self, *a):  # noqa: N802
         pass
+
+    def log_error(self, fmt, *args):  # noqa: N802
+        applog.warn("http: " + fmt, *args)
 
     # Security headers added to EVERY response. The server is loopback-only with no external
     # resources, so the risk is low, but these are a cheap defense and keep web scanners happy.
@@ -289,73 +381,100 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---------- GET ----------
     def do_GET(self):  # noqa: N802
+        self._guard(self._get)
+
+    def do_POST(self):  # noqa: N802
+        self._guard(self._post)
+
+    def _guard(self, handler) -> None:
+        """One place where a handler crash becomes a logged 500, not a blank page and a silent
+        log. Before this, an exception in a handler fell through to the stock 500 with nothing
+        written anywhere - the exact "app.log says nothing" the tester hit."""
+        try:
+            handler()
+        except (BrokenPipeError, ConnectionResetError):
+            pass                        # the browser went away mid-response; not our problem
+        except Exception:
+            applog.exception("Unhandled error while handling %s %s", self.command, self.path)
+            try:
+                self._json({"error": "internal error, see logs/app.log"}, status=500)
+            except Exception:
+                pass
+
+    def _get(self):
+        self._note_browser()
         path = urlparse(self.path)
         p = path.path
+        if p == "/api/whoami":
+            # Answered before the Host check: a second launch probes this to see if the port is
+            # ours, and it cannot know our port to build a matching Host. Constant string, no
+            # data, no filesystem - nothing to guard.
+            return self._whoami()
         if p.startswith("/api/") and not self._api_auth("GET"):
             return
-        if p in ("/", "/index.html"):
-            return self._file_token(_WIZARD)
-        if p in ("/manual", "/documentation.html"):
-            return self._serve_file(config_mod.RESOURCE_ROOT / "docs" / "documentation.html",
-                                 "text/html; charset=utf-8")
-        if p in ("/setup", "/setup-guide.html"):
-            return self._serve_file(config_mod.RESOURCE_ROOT / "docs" / "setup-guide.html",
-                                 "text/html; charset=utf-8")
-        if p in ("/logs", "/log-viewer.html"):
-            return self._file_token(config_mod.RESOURCE_ROOT / "docs" / "log-viewer.html")
         if p.startswith("/assets/"):
             return self._asset(p[len("/assets/"):])
-        if p == "/api/logs":
-            return self._json(self._list_logs())
+        constant = self._GET_ROUTES.get(p)
+        if constant is not None:
+            return constant(self)
+        # Routes that read query parameters - kept explicit so the input is visible.
         if p == "/api/logfile":
-            q = parse_qs(path.query)
-            return self._logfile(q.get("name", [""])[0])
-        if p == "/api/init":
-            return self._init()
+            return self._logfile(parse_qs(path.query).get("name", [""])[0])
         if p == "/api/schema":
             q = parse_qs(path.query)
             return self._schema(q.get("lang", [""])[0], q.get("country", [""])[0])
-        if p == "/api/config":
-            return self._json(config_mod.read_config_values())
-        if p == "/api/progress":
-            with _RUN_LOCK:
-                return self._json(dict(_RUN))
         if p == "/download":
-            q = parse_qs(path.query)
-            return self._download(q.get("name", [""])[0])
+            return self._download(parse_qs(path.query).get("name", [""])[0])
         if p == "/favicon.ico":
             self.send_response(204); self.end_headers(); return
         self.send_response(404); self.end_headers()
 
     # ---------- POST ----------
-    def do_POST(self):  # noqa: N802
+    def _post(self):
         path = urlparse(self.path)
         p = path.path
+        if p != "/api/window-closing":
+            self._note_browser()        # ... but the closing notice must not cancel itself
         if p.startswith("/api/") and not self._api_auth("POST"):
             return
-        if p == "/api/config":
-            return self._save_config()
-        if p == "/api/logs/clear":
-            return self._json(self._delete_logs())
+        constant = self._POST_ROUTES.get(p)
+        if constant is not None:
+            return constant(self)
         if p == "/api/upload":
-            q = parse_qs(path.query)
-            return self._upload(q.get("name", [""])[0])
-        if p == "/api/preview":
-            return self._preview()
-        if p == "/api/install-xlsx":
-            return self._install_xlsx()
-        if p == "/api/estimate":
-            return self._estimate()
-        if p == "/api/run":
-            return self._run()
-        if p == "/api/session":
-            _save_session_record(self._body())
-            return self._json({"ok": True})
-        if p == "/api/reset":
-            return self._reset()
+            return self._upload(parse_qs(path.query).get("name", [""])[0])
         self.send_response(404); self.end_headers()
 
     # ---------- implementation ----------
+    def _whoami(self):
+        # Asked by a second launch: is this port ours, or something else on it?
+        return self._json({"app": "foxentry-data-cleaner"})
+
+    def _progress(self):
+        with _RUN_LOCK:
+            return self._json(dict(_RUN))
+
+    def _window_closing(self):
+        # `pagehide`: the page is going away. It may be a reload - see _watchdog.
+        global _CLOSING
+        _CLOSING = time.monotonic()
+        return self._json({"ok": True})
+
+    def _session(self):
+        _save_session_record(self._body())
+        return self._json({"ok": True})
+
+    # Constant routes - route key in, fixed handler out, no request data on the path. Defined
+    # after the methods they name; assigned below the class body.
+    _GET_ROUTES: dict = {}
+    _POST_ROUTES: dict = {}
+
+    def _note_browser(self) -> None:
+        """Something is talking to us, so the window is open. If a close was pending, it was a
+        reload: cancel it."""
+        global _CLOSING, _SEEN_BROWSER
+        _SEEN_BROWSER = True
+        _CLOSING = 0.0
+
     def _api_auth(self, method: str) -> bool:
         """Protect the local API: allow only a loopback Host (against DNS rebinding) and for
         POST also a matching session token (against CSRF from another page). Otherwise 403."""
@@ -394,15 +513,15 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _asset(self, name: str):
-        """Local static files (font/icon) - extension whitelist only, no path traversal."""
-        name = _safe_name(name)
+        """Local static files (font/icon) - extension whitelist AND confined to the assets dir."""
+        safe = _safe_name(name)
         types = {".woff2": "font/woff2", ".woff": "font/woff", ".svg": "image/svg+xml",
                 ".css": "text/css; charset=utf-8", ".png": "image/png"}
-        ext = Path(name).suffix.lower()
-        if not name or ext not in types:
+        ext = Path(safe).suffix.lower()
+        if not safe or ext not in types:
             self.send_response(404); self.end_headers(); return
-        path = _ASSETS / name
-        if not path.is_file():
+        path = _pick_file(_ASSETS, safe)
+        if path is None:
             self.send_response(404); self.end_headers(); return
         data = path.read_bytes()
         self.send_response(200)
@@ -503,6 +622,24 @@ class Handler(BaseHTTPRequestHandler):
         # update the language for subsequent responses
         i18n.set_lang(values.get("LANGUAGE", "en"))
         self._json({"ok": True, "path": str(path)})
+
+    def _quit(self):
+        """Stop the server, from the interface.
+
+        The app is a local web server, and it used to be stopped with Ctrl+C in the console it
+        prints to. A macOS .app has no console, and on Windows the console window is a thing
+        people close by accident or leave running for days. So the wizard can say when it is
+        done, on every platform.
+
+        `shutdown()` blocks until the serve loop stops, and we are inside that loop right now:
+        it has to be called from another thread, after this response has been written.
+        """
+        self._json({"ok": True})
+        try:
+            self.wfile.flush()
+        except Exception:
+            pass
+        threading.Thread(target=self.server.shutdown, daemon=True).start()
 
     def _install_xlsx(self):
         """Install openpyxl: pinned version, wheel only, isolated into vendor/.
@@ -756,12 +893,13 @@ class Handler(BaseHTTPRequestHandler):
         return {"logs": out}
 
     def _logfile(self, name):
-        """Return the contents of a specific request log (safe *.jsonl name from logs/ only)."""
-        name = _safe_name(name)
-        if not (name.startswith("requests-") and name.endswith(".jsonl")):
+        """Return one request log. Name must match requests-<digits>-<digits>.jsonl exactly and
+        resolve inside logs/ - a strict shape CodeQL can see, plus the directory confinement."""
+        safe = _safe_name(name)
+        if not _LOGFILE_RE.fullmatch(safe):
             self.send_response(400); self.end_headers(); return
-        path = config_mod.LOG_DIR / name
-        if not path.is_file():
+        path = _pick_file(config_mod.LOG_DIR, safe)
+        if path is None:
             self.send_response(404); self.end_headers(); return
         data = path.read_bytes()
         self.send_response(200)
@@ -772,13 +910,17 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _download(self, name):
-        name = _safe_name(name)
+        safe = _safe_name(name)
         cfg = config_mod.Config()
-        path = cfg.OUTPUT_DIR / name
-        if not path.is_file():
+        # Only the file kinds the app actually writes to output/ - a shape check on top of the
+        # directory confinement below.
+        if Path(safe).suffix.lower() not in (".csv", ".html", ".xlsx"):
             self.send_response(404); self.end_headers(); return
-        ctype = ("text/html; charset=utf-8" if name.endswith(".html")
-                 else "text/csv; charset=utf-8" if name.endswith(".csv")
+        path = _pick_file(cfg.OUTPUT_DIR, safe)
+        if path is None:
+            self.send_response(404); self.end_headers(); return
+        ctype = ("text/html; charset=utf-8" if safe.endswith(".html")
+                 else "text/csv; charset=utf-8" if safe.endswith(".csv")
                  else "application/octet-stream")
         data = path.read_bytes()
         self.send_response(200)
@@ -809,17 +951,123 @@ def _cleanup_logs(cfg) -> None:
         pass
 
 
+# A small list of fixed ports, tried in order. The OS decides who owns the app, atomically:
+# the first instance binds the port, a second instance cannot, and that failed bind IS the
+# signal that a copy is already running - no lock file to go stale, no race to write it, no
+# second request to confirm it. This is how a local web tool tells itself apart from itself.
+#
+# These sit in the user-port range (1024-49151), picked to be uncommon rather than to be in
+# any particular IANA band. If something unrelated already holds one, the app steps to the next
+# - six of them so that a machine busy enough to have taken several still leaves one free.
+#
+# Known limitation: a loopback port is shared across the OS users of one machine. If user A is
+# running the app and user B launches it, B's bind fails, the probe says "it's foxentry", and
+# B's browser opens A's instance - whose POSTs B cannot make (different session token). Narrow
+# case (two users on one desktop machine at once); accepted for now rather than deriving the
+# port from the UID.
+_PORTS = (8783, 8784, 8785, 8786, 8787, 8788)
+
+
+def _our_app_answers(port: int) -> bool:
+    """Is it OUR app on that port, or something else that happens to hold it?"""
+    try:
+        request = urllib.request.Request(f"http://127.0.0.1:{port}/api/whoami")
+        with urllib.request.urlopen(request, timeout=1.5) as response:
+            return json.loads(response.read()).get("app") == "foxentry-data-cleaner"
+    except Exception:
+        return False
+
+
+def _bind_or_find_running() -> tuple[LoopbackServer | None, int]:
+    """Bind the first free app port, or report the one a running copy already holds.
+
+    Returns (server, port) on success, or (None, port) when a copy of us is already on `port`.
+    Raises only if every port is taken by something that is not us.
+    """
+    taken_by_us = None
+    for candidate in _PORTS:
+        try:
+            return LoopbackServer(("127.0.0.1", candidate), Handler), candidate
+        except OSError:
+            # The port is busy. If it is our own running instance, remember it and stop looking;
+            # a second launch belongs there, not on the next port.
+            if _our_app_answers(candidate):
+                taken_by_us = candidate
+                break
+            continue                    # someone else has it - try the next
+    if taken_by_us is not None:
+        return None, taken_by_us
+    raise OSError("no free port for Foxentry Data Cleaner in %s" % (_PORTS,))
+
+
+Handler._GET_ROUTES = {
+    "/": lambda h: h._file_token(_WIZARD),
+    "/index.html": lambda h: h._file_token(_WIZARD),
+    "/manual": lambda h: h._serve_file(config_mod.RESOURCE_ROOT / "docs" / "documentation.html", "text/html; charset=utf-8"),
+    "/documentation.html": lambda h: h._serve_file(config_mod.RESOURCE_ROOT / "docs" / "documentation.html", "text/html; charset=utf-8"),
+    "/setup": lambda h: h._serve_file(config_mod.RESOURCE_ROOT / "docs" / "setup-guide.html", "text/html; charset=utf-8"),
+    "/setup-guide.html": lambda h: h._serve_file(config_mod.RESOURCE_ROOT / "docs" / "setup-guide.html", "text/html; charset=utf-8"),
+    "/logs": lambda h: h._file_token(config_mod.RESOURCE_ROOT / "docs" / "log-viewer.html"),
+    "/log-viewer.html": lambda h: h._file_token(config_mod.RESOURCE_ROOT / "docs" / "log-viewer.html"),
+    "/api/logs": lambda h: h._json(h._list_logs()),
+    "/api/init": lambda h: h._init(),
+    "/api/config": lambda h: h._json(config_mod.read_config_values()),
+    "/api/whoami": lambda h: h._whoami(),
+    "/api/progress": lambda h: h._progress(),
+}
+Handler._POST_ROUTES = {
+    "/api/config": lambda h: h._save_config(),
+    "/api/quit": lambda h: h._quit(),
+    "/api/window-closing": lambda h: h._window_closing(),
+    "/api/logs/clear": lambda h: h._json(h._delete_logs()),
+    "/api/preview": lambda h: h._preview(),
+    "/api/install-xlsx": lambda h: h._install_xlsx(),
+    "/api/estimate": lambda h: h._estimate(),
+    "/api/run": lambda h: h._run(),
+    "/api/session": lambda h: h._session(),
+    "/api/reset": lambda h: h._reset(),
+}
+
 def start_server(port: int = 0, open_writer: bool = True) -> None:
     global _PORT
     cfg = config_mod.Config()
     i18n.set_lang(cfg.lang)
     applog.set_value(cfg.LOG_DIR, cfg.log_app)
     _cleanup_logs(cfg)
-    applog.info("Server starting (port=%s, concurrency=%s, api_version=%s)",
-                port or "auto", cfg.concurrency, cfg.api_version)
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    actual_port = server.server_address[1]
+    import platform as _pf
+    applog.info("Foxentry Data Cleaner %s starting", __version__)
+    applog.info("  platform=%s %s | python=%s | frozen=%s",
+                _pf.system(), _pf.release(), _pf.python_version(), getattr(sys, "frozen", False))
+    applog.info("  data_dir=%s", config_mod.DATA_ROOT)
+
+    # A caller-given port (tests, --port) is taken as-is. Otherwise claim a fixed app port -
+    # and if a copy of us already holds one, reopen its window instead of starting a second.
+    #
+    # This runs on Windows and Linux, where a second launch is a new process that reaches this
+    # code. On macOS it does not: LaunchServices activates the running .app rather than starting
+    # a second process, so this never runs there and the window is not brought back. Harmless -
+    # nothing happens - but not the feature either. A native fix (applicationShouldHandleReopen:)
+    # is tracked as a follow-up; see the macOS reopen issue.
+    if port:
+        server = LoopbackServer(("127.0.0.1", port), Handler)
+        actual_port = server.server_address[1]
+    else:
+        server, actual_port = _bind_or_find_running()
+        if server is None:
+            url = f"http://127.0.0.1:{actual_port}/"
+            applog.info("already running on %s - reopening its window", actual_port)
+            print("\n  " + i18n.t("already_running", url=url))
+            if open_writer:
+                try:
+                    from . import applaunch
+                    applaunch.open_ui(url, app_mode=cfg.ui_app_mode)
+                except Exception:
+                    pass
+            return
+
     _PORT = actual_port
+    applog.info("  port=%s concurrency=%s api_version=%s",
+                actual_port, cfg.concurrency, cfg.api_version)
     url = f"http://127.0.0.1:{actual_port}/"
     print()
     print("  🦊  " + i18n.t("app_title"))
@@ -831,8 +1079,23 @@ def start_server(port: int = 0, open_writer: bool = True) -> None:
             applaunch.open_ui(url, app_mode=config_mod.Config().ui_app_mode)
         except Exception:
             pass
+    if open_writer:
+        threading.Thread(target=_watchdog, args=(server, time.monotonic()), daemon=True).start()
+
+    # Cmd+Q, or a shutdown, or `kill`. Stop the way the Quit button stops, not by being killed
+    # in the middle of writing a row.
+    def _terminate(signum, frame):        # noqa: ARG001
+        threading.Thread(target=server.shutdown, daemon=True).start()
+
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        try:
+            signal.signal(sig, _terminate)
+        except (ValueError, OSError):
+            pass                          # not the main thread, or the platform says no
+
     try:
-        server.serve_forever()
+        server.serve_forever()          # returns when the window closes, or /api/quit is called
+        print("\n  " + i18n.t("server_bye"))
     except KeyboardInterrupt:
         print("\n  " + i18n.t("server_bye"))
         server.shutdown()

@@ -404,6 +404,7 @@
       <a class="icon-btn" id="manualLink" href="https://foxentry.com/cs/manual?utm_source=cleaner&utm_medium=app&utm_campaign=data_cleaner" target="_blank" rel="noopener" data-t="manual" style="text-decoration:none;font-size:.8rem;font-weight:700;padding:.32rem .62rem">Manual</a>
       <div class="lang" id="lang"></div>
       <button class="icon-btn" id="gear" title="Advanced" onclick="openConfig()">&#9881;</button>
+      <button class="icon-btn" id="quit" data-t-title="quit_title" title="Quit" onclick="quitApp()">&#9211;</button>
     </div>
   </div>
 </header>
@@ -454,6 +455,9 @@ const T = {
     c_detected:"Detected from your file:",
     why_country:"a country column", why_phone:"phone prefixes", why_zip:"postal codes",
     why_company:"company names", why_email:"e-mail domains",
+    quit_title:"Quit the app",
+    quit_confirm:"Close Foxentry Data Cleaner? Any run in progress will stop. Finished rows are saved and can be resumed.",
+    quit_done:"Foxentry Data Cleaner has stopped. You can close this window.",
     c_lang_auto:"Auto (system language)",
     c_country_ph:"auto",
     c_country_help:"Leave empty to detect the country from each file. Fill it in only to force one country on every run.",
@@ -534,6 +538,9 @@ const T = {
     c_detected:"Rozpoznáno ze souboru:",
     why_country:"sloupce se zemí", why_phone:"telefonních předvoleb", why_zip:"PSČ",
     why_company:"názvů firem", why_email:"e-mailových domén",
+    quit_title:"Ukončit aplikaci",
+    quit_confirm:"Ukončit Foxentry Data Cleaner? Probíhající zpracování se zastaví. Hotové řádky jsou uložené a lze v nich pokračovat.",
+    quit_done:"Foxentry Data Cleaner byl ukončen. Okno můžete zavřít.",
     c_lang_auto:"Automaticky (podle systému)",
     c_country_ph:"auto",
     c_country_help:"Prázdné = zemi rozpoznáme z každého souboru. Vyplňte jen tehdy, chcete-li vynutit jednu zemi pro každý běh.",
@@ -793,6 +800,7 @@ function applyT(){
   document.documentElement.lang=lang;
   document.querySelectorAll("[data-t]").forEach(e=>{const k=e.getAttribute("data-t");if((T[lang]||T.en)[k])e.textContent=(T[lang]||T.en)[k];});
   document.querySelectorAll("[data-t-ph]").forEach(e=>{const k=e.getAttribute("data-t-ph");if((T[lang]||T.en)[k])e.placeholder=(T[lang]||T.en)[k];});
+  document.querySelectorAll("[data-t-title]").forEach(e=>{const k=e.getAttribute("data-t-title");if((T[lang]||T.en)[k])e.title=(T[lang]||T.en)[k];});
   document.getElementById("cfgTitle").textContent=tr("settings");
   renderLang();
 }
@@ -1513,6 +1521,28 @@ function pollRun(){
 }
 
 /* ---------- advanced config modal ---------- */
+// The window is the app: when it closes, the app stops.
+//
+// `pagehide` fires on a close AND on a reload, and nothing tells them apart. So we do not try:
+// we say "going away", the server schedules the shutdown, and a reload cancels it simply by
+// loading and talking to the server again. `keepalive` is what lets the request survive the
+// page it was sent from.
+//
+// Deliberately NOT a heartbeat: browsers throttle timers in a background tab to one tick per
+// minute, and confirm() blocks them dead. Either would read as a closed window, and switching
+// to another app for two minutes would kill a run.
+window.addEventListener("pagehide", ()=>{
+  try{ fetch("/api/window-closing", {method:"POST", keepalive:true}); }catch(e){}
+});
+
+async function quitApp(){
+  if(!confirm(tr("quit_confirm"))) return;
+  try{ await api("/api/quit", {method:"POST"}); }catch(e){}   // the server dies mid-reply; that is the point
+  document.body.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:center;height:100vh;'
+    + 'text-align:center;color:#8b949e;font-size:1rem">' + esc(tr("quit_done")) + '</div>';
+}
+
 async function openConfig(){
   const c=await api("/api/config");state.config=c;
   document.getElementById("c_lang").value=c.LANGUAGE||"";   // "" = follow the system

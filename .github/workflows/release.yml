@@ -115,12 +115,34 @@ jobs:
       - name: Install build deps
         run: pip install pyinstaller openpyxl==3.1.5 et_xmlfile==2.0.0
       - name: Build (PyInstaller)
+        env:
+          # macOS caches Info.plist per bundle id + version. Every build gets its own number, or
+          # the system reads the plist from whichever build it saw first and ignores the rest.
+          FOXENTRY_BUILD: ${{ github.run_number }}
         run: pyinstaller packaging/foxentry.spec --clean
-      - name: Rename
-        run: mv dist/FoxentryDataCleaner dist/FoxentryDataCleaner-macos && chmod +x dist/FoxentryDataCleaner-macos
 
-      # Code signing + notarization with an Apple Developer ID (runs when the Apple secrets are present).
-      - name: Sign & notarize (Apple Developer ID)
+      # What ended up in the bundle, printed here rather than asked of whoever is testing.
+      # A plist that says the wrong thing is a five-second answer; guessing at it is a day.
+      - name: What the bundle says about itself
+        run: |
+          PLIST="$PWD/dist/Foxentry Data Cleaner.app/Contents/Info.plist"
+          echo "CFBundleShortVersionString: $(defaults read "$PLIST" CFBundleShortVersionString)"
+          echo "CFBundleVersion:            $(defaults read "$PLIST" CFBundleVersion)"
+          echo "CFBundleIdentifier:         $(defaults read "$PLIST" CFBundleIdentifier)"
+          echo -n "LSUIElement:                "
+          defaults read "$PLIST" LSUIElement 2>/dev/null || echo "(absent)"
+          echo "  -> 0 or absent = Dock icon.  1 = no Dock icon."
+
+      # Signing, notarization and stapling.
+      #
+      # A .app can be STAPLED: the notarization ticket is attached to the bundle, so Gatekeeper
+      # clears it without asking Apple. A bare binary cannot be stapled, which is why the 2.0.0
+      # download needed an internet connection on first launch - and a terminal, because a
+      # browser download strips the execute bit and Finder cannot open an extensionless file.
+      #
+      # Notarize twice on purpose: once for the app (so the app is stapled even after it is
+      # dragged out of the disk image), once for the .dmg itself (so the image opens cleanly).
+      - name: Sign, notarize & staple (Apple Developer ID)
         if: env.SIGN_ENABLED == 'true'
         env:
           CERT_P12: ${{ secrets.APPLE_CERT_P12_BASE64 }}
@@ -130,34 +152,75 @@ jobs:
           AC_PWD:   ${{ secrets.APPLE_APP_PASSWORD }}
           AC_TEAM:  ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          set -euo pipefail
           echo "$CERT_P12" | base64 --decode > cert.p12
           security create-keychain -p ci build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p ci build.keychain
           security import cert.p12 -k build.keychain -P "$CERT_PWD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k ci build.keychain
-          codesign --force --options runtime --timestamp -s "$DEV_ID" dist/FoxentryDataCleaner-macos
-          ditto -c -k --keepParent dist/FoxentryDataCleaner-macos notarize.zip
-          xcrun notarytool submit notarize.zip --apple-id "$AC_ID" --password "$AC_PWD" --team-id "$AC_TEAM" --wait
-          # (onefile binary cannot be stapled; notarization is verified online by Gatekeeper)
-          codesign --verify --verbose dist/FoxentryDataCleaner-macos
 
+          APP="dist/Foxentry Data Cleaner.app"
+
+          # The bundle carries the Python interpreter and its libraries as separate files, so
+          # every one of them has to be signed - from the inside out, the executable last.
+          # `--deep` is Apple's own "do not use this" flag: it is unreliable on a bundle this
+          # shape and it silently skips things.
+          find "$APP" \( -name "*.dylib" -o -name "*.so" -o -name "*.framework" \) -print0 |
+            while IFS= read -r -d '' lib; do
+              codesign --force --options runtime --timestamp \
+                       --entitlements packaging/entitlements.plist -s "$DEV_ID" "$lib"
+            done
+          codesign --force --options runtime --timestamp \
+                   --entitlements packaging/entitlements.plist -s "$DEV_ID" "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+
+          ditto -c -k --keepParent "$APP" notarize-app.zip
+          xcrun notarytool submit notarize-app.zip \
+                --apple-id "$AC_ID" --password "$AC_PWD" --team-id "$AC_TEAM" --wait
+          xcrun stapler staple "$APP"
+
+          # The disk image the user downloads. A bare one opens as two icons in a plain window
+          # and says nothing, so the first user did the obvious thing: ran the app from the disk
+          # image instead of installing it. The window is laid out to say what to do - the app
+          # on the left, the Applications folder on the right, an arrow between them.
+          bash packaging/make-dmg.sh "$APP" dist/FoxentryDataCleaner-macos.dmg
+          codesign --force --timestamp -s "$DEV_ID" dist/FoxentryDataCleaner-macos.dmg
+          xcrun notarytool submit dist/FoxentryDataCleaner-macos.dmg \
+                --apple-id "$AC_ID" --password "$AC_PWD" --team-id "$AC_TEAM" --wait
+          xcrun stapler staple dist/FoxentryDataCleaner-macos.dmg
+
+          # It is stapled only if Gatekeeper says so without a network round-trip.
+          xcrun stapler validate "$APP"
+          xcrun stapler validate dist/FoxentryDataCleaner-macos.dmg
+          spctl --assess --type execute --verbose=4 "$APP"
+
+      # No Apple secrets: still ship a disk image, just an unsigned one.
+      - name: Package (unsigned)
+        if: env.SIGN_ENABLED != 'true'
+        run: bash packaging/make-dmg.sh "dist/Foxentry Data Cleaner.app" dist/FoxentryDataCleaner-macos.dmg
+
+      # Only the disk image ships. A loose copy of the binary used to ship alongside it, "for the
+      # command line" - it was copied out of the bundle BEFORE the bundle was signed, so it was
+      # unsigned, and macOS told the user their download was damaged and offered to bin it. The
+      # command line lives inside the app:
+      #   "/Applications/Foxentry Data Cleaner.app/Contents/MacOS/FoxentryDataCleaner" --cli
       - name: Checksums
-        run: cd dist && shasum -a 256 FoxentryDataCleaner-macos > FoxentryDataCleaner-macos.sha256
+        run: cd dist && shasum -a 256 FoxentryDataCleaner-macos.dmg > FoxentryDataCleaner-macos.dmg.sha256
       - name: Attest provenance
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
-        with: { subject-path: dist/FoxentryDataCleaner-macos }
+        with: { subject-path: dist/FoxentryDataCleaner-macos.dmg }
       - name: Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           files: |
-            dist/FoxentryDataCleaner-macos
-            dist/FoxentryDataCleaner-macos.sha256
+            dist/FoxentryDataCleaner-macos.dmg
+            dist/FoxentryDataCleaner-macos.dmg.sha256
       - name: Upload artifact (non-tag runs)
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with: { name: FoxentryDataCleaner-macos, path: "dist/FoxentryDataCleaner-macos*" }
+        with: { name: FoxentryDataCleaner-macos, path: "dist/FoxentryDataCleaner-macos.dmg*" }
 
   # ───────────────────────────── Linux ─────────────────────────────
   build-linux:

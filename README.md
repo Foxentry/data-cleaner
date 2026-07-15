@@ -24,12 +24,14 @@ auditors and developers can always use **B**. Both work on **Windows, macOS and 
 
 1. Download the build for your operating system from the project **Releases**:
    - **Windows** → `FoxentryDataCleaner.exe`
-   - **macOS** → `FoxentryDataCleaner-macos`
+   - **macOS** → `FoxentryDataCleaner-macos.dmg` (open it, drag the app to Applications,
+     double-click). For the command line, the binary is inside the app:
+     `"/Applications/Foxentry Data Cleaner.app/Contents/MacOS/FoxentryDataCleaner" --cli`
    - **Linux** → `FoxentryDataCleaner-linux`
 2. (Optional but recommended) verify it before running:
    - **Signature** — *Windows:* right-click → *Properties* → *Digital Signatures* (issuer:
-     AVANTRO s.r.o.), or `signtool verify /pa FoxentryDataCleaner.exe`. *macOS:* the build is
-     codesigned + notarized, so Gatekeeper verifies it automatically. *Linux:* unsigned by
+     AVANTRO s.r.o.), or `signtool verify /pa FoxentryDataCleaner.exe`. *macOS:* the app and the disk image are
+     codesigned, notarized and stapled, so Gatekeeper clears them offline. *Linux:* unsigned by
      convention — use the checksum/provenance below.
    - **Checksum:** each release binary ships with a `.sha256` file — `Get-FileHash <file> -Algorithm SHA256`
      on Windows, `sha256sum <file>` on macOS/Linux.
