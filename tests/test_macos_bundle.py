@@ -154,10 +154,6 @@ def test_quitting_from_the_dock_is_not_a_kill() -> None:
     assert "signal.SIGTERM" in SERVER
 
 
-def test_the_macos_app_is_in_the_dock() -> None:
-    """A running app with no trace in the Dock has no trace anywhere."""
-    assert '"LSUIElement": False' in SPEC
-
 
 def test_every_build_gets_its_own_number() -> None:
     """macOS caches Info.plist per bundle id + version. Ten test builds all calling themselves
@@ -171,13 +167,12 @@ def test_every_build_gets_its_own_number() -> None:
 APPLAUNCH = (Path(__file__).resolve().parent.parent / "foxentry" / "applaunch.py").read_text(encoding="utf-8")
 
 
-def test_the_dock_icon_cannot_break_the_app() -> None:
-    """A Python process gets no Dock icon on its own: it never registers with the window server,
-    and `LSUIElement: false` cannot hold an icon nobody is holding. We register through the
-    Objective-C runtime - and if that fails for any reason, the app runs without an icon rather
-    than not running."""
-    assert "setActivationPolicy:" in APPLAUNCH
-    assert "except Exception:" in APPLAUNCH, "a missing icon must never stop the app starting"
+def test_the_dock_registration_is_not_wired_in() -> None:
+    """Registering as a regular app put an icon in the Dock, but with no AppKit run loop it
+    bounced forever and answered no clicks - worse than no icon. show_in_dock() is kept as a
+    documented dead-end, but nothing calls it, and the bundle hides from the Dock."""
+    assert "show_in_dock()" not in SERVER, "the broken Dock registration must stay unwired"
+    assert '"LSUIElement": True' in SPEC
 
 
 def test_it_does_nothing_off_macos(monkeypatch) -> None:
@@ -193,3 +188,24 @@ def test_linux_is_not_abandoned_when_no_browser_opens() -> None:
     open that URL by hand or forward the port over SSH minutes later. It has to still be there."""
     assert "_NO_CONSOLE and not _SEEN_BROWSER" in SERVER
     assert 'sys.platform in ("win32", "darwin")' in SERVER
+
+
+def test_a_handler_crash_is_logged_and_returned() -> None:
+    """The tester hit a broken page with nothing in app.log. An unhandled error in a handler
+    used to fall through to a blank 500 and write nothing; now it is logged with a traceback
+    and returned as a 500 that names the log."""
+    assert "_guard" in SERVER
+    assert "applog.exception" in SERVER
+    assert "see logs/app.log" in SERVER
+
+
+def test_the_access_log_silence_does_not_swallow_errors() -> None:
+    """`log_message` was overridden to `pass`, which also threw away the error path that records
+    a failed request. `log_error` now routes those to the app log."""
+    assert "def log_error" in SERVER
+
+
+def test_startup_records_the_environment() -> None:
+    """A bad report is undebuggable without knowing the platform, the build, and where files
+    went. The startup lines carry all three."""
+    assert "platform=%s" in SERVER and "frozen=%s" in SERVER and "data_dir=%s" in SERVER

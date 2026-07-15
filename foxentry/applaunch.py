@@ -78,7 +78,14 @@ def open_ui(url: str, app_mode: bool = True) -> str:
 
 
 def show_in_dock() -> bool:
-    """Ask macOS to keep this process in the Dock.
+    """Ask macOS to keep this process in the Dock. NOT CALLED - kept as a record of what does
+    not work.
+
+    Registering as a regular app does put an icon in the Dock, but there is no AppKit run loop
+    to service it: the icon bounces without end and ignores every click. That is worse than no
+    icon. A working Dock presence needs a native macOS app, which this - a Python process
+    serving a browser UI - is not. Left here so the next person does not rediscover it the hard
+    way.
 
     The app is a Python process that runs a web server; the window it shows is a browser
     window. macOS gives a Dock icon to processes that register with the window server, and a

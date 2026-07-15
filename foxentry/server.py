@@ -36,6 +36,7 @@ from urllib.parse import urlparse, parse_qs
 from . import applog
 from . import countries
 from . import config as config_mod
+from . import __version__ as _VERSION
 from . import i18n, mapping
 from . import io_tables
 from . import __version__
@@ -296,9 +297,14 @@ def _start_run(cfg, input_file: Path, rows, header, tasks, limit, log_run=False)
 
 
 class Handler(BaseHTTPRequestHandler):
-    # silence the console
+    # The stock handler writes a line per request to stderr. We do not want the access spam,
+    # but its ERROR path is how a 400/500 gets recorded - silencing all of it (which is what
+    # `pass` did) threw those away too, and left app.log with nothing when a request failed.
     def log_message(self, *a):  # noqa: N802
         pass
+
+    def log_error(self, fmt, *args):  # noqa: N802
+        applog.warn("http: " + fmt, *args)
 
     # Security headers added to EVERY response. The server is loopback-only with no external
     # resources, so the risk is low, but these are a cheap defense and keep web scanners happy.
@@ -348,6 +354,27 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---------- GET ----------
     def do_GET(self):  # noqa: N802
+        self._guard(self._get)
+
+    def do_POST(self):  # noqa: N802
+        self._guard(self._post)
+
+    def _guard(self, handler) -> None:
+        """One place where a handler crash becomes a logged 500, not a blank page and a silent
+        log. Before this, an exception in a handler fell through to the stock 500 with nothing
+        written anywhere - the exact "app.log says nothing" the tester hit."""
+        try:
+            handler()
+        except (BrokenPipeError, ConnectionResetError):
+            pass                        # the browser went away mid-response; not our problem
+        except Exception:
+            applog.exception("Unhandled error while handling %s %s", self.command, self.path)
+            try:
+                self._json({"error": "internal error, see logs/app.log"}, status=500)
+            except Exception:
+                pass
+
+    def _get(self):
         self._note_browser()
         path = urlparse(self.path)
         p = path.path
@@ -392,7 +419,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(404); self.end_headers()
 
     # ---------- POST ----------
-    def do_POST(self):  # noqa: N802
+    def _post(self):
         path = urlparse(self.path)
         p = path.path
         if p != "/api/window-closing":
@@ -972,13 +999,13 @@ def start_server(port: int = 0, open_writer: bool = True) -> None:
     i18n.set_lang(cfg.lang)
     applog.set_value(cfg.LOG_DIR, cfg.log_app)
     _cleanup_logs(cfg)
-    applog.info("Server starting (port=%s, concurrency=%s, api_version=%s)",
+    import platform as _pf
+    applog.info("Foxentry Data Cleaner %s starting", _VERSION)
+    applog.info("  platform=%s %s | python=%s | frozen=%s",
+                _pf.system(), _pf.release(), _pf.python_version(), getattr(sys, "frozen", False))
+    applog.info("  data_dir=%s", config_mod.DATA_ROOT)
+    applog.info("  port=%s concurrency=%s api_version=%s",
                 port or "auto", cfg.concurrency, cfg.api_version)
-    # Must happen on the main thread, before the server takes it over.
-    if open_writer:
-        from . import applaunch
-        applaunch.show_in_dock()
-
     server = LoopbackServer(("127.0.0.1", port), Handler)
     actual_port = server.server_address[1]
     _PORT = actual_port

@@ -146,14 +146,11 @@ if _ONEDIR:
             "NSHighResolutionCapable": True,
             "LSMinimumSystemVersion": "11.0",
             "NSHumanReadableCopyright": "Copyright 2026 AVANTRO s.r.o. Apache-2.0.",
-            # A Dock icon. The app has no window of its own - the browser is the window - so the
-            # icon does not open anything. It is there because a running app with no trace in
-            # the Dock has no trace anywhere: bury the browser window behind other windows and
-            # the user has nothing to click and no way to tell the app is still running.
-            #
-            # Clicking the icon cannot bring the window back (this is not an AppKit app), so
-            # LAUNCHING IT AGAIN does instead: a second launch finds the first one and reopens
-            # its window rather than starting a second server. That is what a user does anyway.
-            "LSUIElement": False,
+            # No Dock icon. We tried: registering as a regular app put an icon there, but with
+            # no AppKit run loop behind it, it bounced forever and answered no clicks - worse
+            # than not being there. A real Dock presence needs a native app, not a Python
+            # process serving a browser. Relaunching still reopens the window (a second launch
+            # finds the first), which is the "quick access" the icon was meant to provide.
+            "LSUIElement": True,
         },
     )

@@ -40,11 +40,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by hand, or forward the port over SSH and open it minutes later. Giving up on a missing
   browser is only right for a windowed build, where it would otherwise be an invisible process
   nobody can stop.
-- **The app appears in the Dock on macOS.** It is a Python process running a web server, and
-  such a process never registers with the window server, so macOS showed its icon for a moment
-  at launch and dropped it - `LSUIElement: false` cannot hold an icon nobody is holding. It now
-  registers as a regular application. If that fails, the app runs without an icon rather than
-  not running.
+- **Failures are written to the log.** A crash inside a request handler used to produce a
+  blank page and an empty `app.log` - nothing to debug from. Every handler error is now logged
+  with a traceback and returned as a clear 500, the server's own HTTP errors reach the log
+  too (silencing the access log had thrown them away), and startup records the platform, the
+  build and where the app keeps its files.
+- **No Dock icon on macOS.** Registering as a regular app did put one there, but a Python
+  process serving a browser has no AppKit run loop behind it: the icon bounced without end and
+  answered no clicks, which is worse than not being there. Relaunching the app still reopens
+  its window, which is the quick access the icon was meant to give. A real Dock presence would
+  need a native app.
 - **Every build carries its own build number.** macOS caches `Info.plist` per bundle identifier
   and version: builds that all called themselves the same thing meant the system read the plist
   from whichever it saw first and ignored the rest, so a change to it looked like it had not
