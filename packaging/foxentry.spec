@@ -149,8 +149,9 @@ if _ONEDIR:
             # No Dock icon. We tried: registering as a regular app put an icon there, but with
             # no AppKit run loop behind it, it bounced forever and answered no clicks - worse
             # than not being there. A real Dock presence needs a native app, not a Python
-            # process serving a browser. Relaunching still reopens the window (a second launch
-            # finds the first), which is the "quick access" the icon was meant to provide.
+            # process serving a browser. (Relaunching to reopen the window works on Windows and
+            # Linux, but not on macOS, where the system does not start a second process - a
+            # native fix is tracked as a follow-up.)
             "LSUIElement": True,
         },
     )

@@ -47,19 +47,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   build and where the app keeps its files.
 - **No Dock icon on macOS.** Registering as a regular app did put one there, but a Python
   process serving a browser has no AppKit run loop behind it: the icon bounced without end and
-  answered no clicks, which is worse than not being there. Relaunching the app still reopens
-  its window, which is the quick access the icon was meant to give. A real Dock presence would
-  need a native app.
+  answered no clicks, which is worse than not being there. A real Dock presence, and bringing
+  the window back on relaunch, both need a native macOS app; tracked as a follow-up.
 - **Every build carries its own build number.** macOS caches `Info.plist` per bundle identifier
   and version: builds that all called themselves the same thing meant the system read the plist
   from whichever it saw first and ignored the rest, so a change to it looked like it had not
   worked when in fact it had never been read.
-- **Launching the app again reopens its window** instead of starting a second copy. The app
-  claims a fixed port; a second launch cannot bind it, and that failed bind is the signal that
-  a copy is already running - decided by the operating system, with no lock file to go stale
-  and no race to write one. (An earlier lock-file version of this worked on Linux but not
-  reliably on macOS; the port is what the OS can settle atomically.) If something unrelated
-  holds the port, the app steps to the next one rather than attaching to a stranger.
+- **The app claims a fixed port** (8783, or the next free one) instead of a random one, so a
+  second launch can tell a copy is already running: it cannot bind the port, and that failed
+  bind is the signal - decided by the operating system, with no lock file to go stale. On
+  Windows and Linux, where a second launch is a new process, it reopens the running window
+  instead of starting a second server. On macOS the system activates the running app without
+  starting a second process, so the window is not brought back there yet - a native fix is
+  tracked as a follow-up. The fixed port also means one address to allowlist behind a firewall.
 - **Cmd+Q stops the app the way the Quit button does**, rather than interrupting it in the
   middle of writing a row.
 - **The macOS app can reach the API at all.** Every call failed with "unable to get local

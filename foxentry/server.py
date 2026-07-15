@@ -1008,6 +1008,12 @@ def start_server(port: int = 0, open_writer: bool = True) -> None:
 
     # A caller-given port (tests, --port) is taken as-is. Otherwise claim a fixed app port -
     # and if a copy of us already holds one, reopen its window instead of starting a second.
+    #
+    # This runs on Windows and Linux, where a second launch is a new process that reaches this
+    # code. On macOS it does not: LaunchServices activates the running .app rather than starting
+    # a second process, so this never runs there and the window is not brought back. Harmless -
+    # nothing happens - but not the feature either. A native fix (applicationShouldHandleReopen:)
+    # is tracked as a follow-up; see the macOS reopen issue.
     if port:
         server = LoopbackServer(("127.0.0.1", port), Handler)
         actual_port = server.server_address[1]
