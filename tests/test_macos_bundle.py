@@ -170,23 +170,51 @@ def test_the_corporate_proxy_root_is_included() -> None:
     assert "/Library/Keychains/System.keychain" in API
 
 
-def test_a_second_launch_reopens_the_window() -> None:
-    """The window is a browser window, and a browser window gets buried. When it does, the user
-    relaunches the app - and a second server on a second port, one of them holding a
-    half-finished run, is not what they asked for."""
-    assert "_running_instance" in SERVER
-    assert '"/api/whoami"' in SERVER, "the port has to be checked, not trusted"
+def test_a_second_launch_finds_the_first_by_the_port(tmp_path, monkeypatch) -> None:
+    """A running copy owns a fixed port. A second launch cannot bind it, and that failed bind
+    is the signal - atomic, decided by the OS, with no lock file to go stale and no race to
+    write one. The old file-based scheme is what failed on macOS; this cannot.
 
-
-def test_a_stale_instance_file_is_not_believed(tmp_path, monkeypatch) -> None:
-    """After a crash the instance file points at a port that is gone - or at whatever took it
-    since. A second launch must not trust it: it checks the port, and a dead one means no
-    instance. Runs the real _running_instance() against a dead port, not a grep."""
+    Here: hold the first port, then check that _bind_or_find_running() reports it as ours rather
+    than starting a second server."""
+    import socket
     from foxentry import server
-    monkeypatch.setattr(server, "_INSTANCE_FILE", tmp_path / ".foxentry-running.json")
-    server._INSTANCE_FILE.write_text(
-        json.dumps({"port": 59999, "token": "x", "pid": 1}), encoding="utf-8")   # 59999 = nothing
-    assert server._running_instance() is None
+
+    first = server.LoopbackServer(("127.0.0.1", 0), server.Handler)
+    held = first.server_address[1]
+    monkeypatch.setattr(server, "_PORTS", (held,))
+    monkeypatch.setattr(server, "_our_app_answers", lambda port: True)  # it IS us on that port
+
+    import threading
+    threading.Thread(target=first.serve_forever, daemon=True).start()
+    try:
+        srv, port = server._bind_or_find_running()
+        assert srv is None, "a second launch must not start its own server on our port"
+        assert port == held
+    finally:
+        first.shutdown()
+
+
+def test_a_foreign_service_on_the_port_is_stepped_over(monkeypatch) -> None:
+    """If something that is not us holds the first port, the app takes the next one - it must
+    not attach to a stranger's port and reopen 'its' window there."""
+    import socket
+    from foxentry import server
+
+    stranger = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    stranger.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    stranger.bind(("127.0.0.1", 0))
+    stranger.listen(1)
+    busy = stranger.getsockname()[1]
+
+    monkeypatch.setattr(server, "_PORTS", (busy, 0))              # 0 = "give me any free port"
+    monkeypatch.setattr(server, "_our_app_answers", lambda port: False)  # the stranger is not us
+    try:
+        srv, port = server._bind_or_find_running()
+        assert srv is not None and port != busy
+        srv.server_close()
+    finally:
+        stranger.close()
 
 
 def test_quitting_from_the_dock_is_not_a_kill() -> None:

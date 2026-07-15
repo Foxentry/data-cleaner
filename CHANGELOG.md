@@ -54,11 +54,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and version: builds that all called themselves the same thing meant the system read the plist
   from whichever it saw first and ignored the rest, so a change to it looked like it had not
   worked when in fact it had never been read.
-- **Launching the app again reopens its window** instead of starting a second copy. The window
-  is a browser window and browser windows get buried; relaunching is what a user does when one
-  goes missing, and it used to leave them with two servers on two ports, one holding a
-  half-finished run. The running copy is found by asking the port whether it is us, so a stale
-  file left by a crash is not believed.
+- **Launching the app again reopens its window** instead of starting a second copy. The app
+  claims a fixed port; a second launch cannot bind it, and that failed bind is the signal that
+  a copy is already running - decided by the operating system, with no lock file to go stale
+  and no race to write one. (An earlier lock-file version of this worked on Linux but not
+  reliably on macOS; the port is what the OS can settle atomically.) If something unrelated
+  holds the port, the app steps to the next one rather than attaching to a stranger.
 - **Cmd+Q stops the app the way the Quit button does**, rather than interrupting it in the
   middle of writing a row.
 - **The macOS app can reach the API at all.** Every call failed with "unable to get local

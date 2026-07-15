@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import json
 import urllib.request
-import os
 import secrets
 import signal
 import threading
@@ -933,67 +932,50 @@ def _cleanup_logs(cfg) -> None:
         pass
 
 
-_INSTANCE_FILE = config_mod.DATA_ROOT / ".foxentry-running.json"
+# A small list of fixed ports, tried in order. The OS decides who owns the app, atomically:
+# the first instance binds the port, a second instance cannot, and that failed bind IS the
+# signal that a copy is already running - no lock file to go stale, no race to write it, no
+# second request to confirm it. This is how a local web tool tells itself apart from itself.
+#
+# The list gives a couple of fallbacks in case something unrelated already holds the first
+# port. They are in the IANA dynamic range and unlikely to collide.
+_PORTS = (8783, 8784, 8785)
 
 
-def _running_instance() -> str | None:
-    """Is a copy of this app already running? Then its URL.
-
-    The window is a browser window, and a browser window gets buried behind other windows. When
-    it does, the user relaunches the app - that is what anyone does. Starting a second server
-    would leave them with two, on two ports, one of them holding a half-finished run.
-
-    So a second launch finds the first and reopens its window instead. The port is checked, not
-    trusted: a stale file from a crash points at nothing, or worse, at whatever took the port.
-    """
+def _our_app_answers(port: int) -> bool:
+    """Is it OUR app on that port, or something else that happens to hold it?"""
     try:
-        record = json.loads(_INSTANCE_FILE.read_text(encoding="utf-8"))
-        port = int(record["port"])
-        token = str(record["token"])
-    except Exception:
-        return None
-
-    url = f"http://127.0.0.1:{port}/"
-    try:
-        request = urllib.request.Request(url + "api/whoami", headers={"X-Auth": token})
+        request = urllib.request.Request(f"http://127.0.0.1:{port}/api/whoami")
         with urllib.request.urlopen(request, timeout=1.5) as response:
-            if json.loads(response.read()).get("app") == "foxentry-data-cleaner":
-                return url
+            return json.loads(response.read()).get("app") == "foxentry-data-cleaner"
     except Exception:
-        pass
-    return None
+        return False
 
 
-def _claim_instance(port: int) -> None:
-    try:
-        _INSTANCE_FILE.write_text(json.dumps({"port": port, "token": _TOKEN, "pid": os.getpid()}),
-                                  encoding="utf-8")
-    except Exception:
-        pass
+def _bind_or_find_running() -> tuple[LoopbackServer | None, int]:
+    """Bind the first free app port, or report the one a running copy already holds.
 
-
-def _release_instance() -> None:
-    try:
-        _INSTANCE_FILE.unlink(missing_ok=True)
-    except Exception:
-        pass
+    Returns (server, port) on success, or (None, port) when a copy of us is already on `port`.
+    Raises only if every port is taken by something that is not us.
+    """
+    taken_by_us = None
+    for candidate in _PORTS:
+        try:
+            return LoopbackServer(("127.0.0.1", candidate), Handler), candidate
+        except OSError:
+            # The port is busy. If it is our own running instance, remember it and stop looking;
+            # a second launch belongs there, not on the next port.
+            if _our_app_answers(candidate):
+                taken_by_us = candidate
+                break
+            continue                    # someone else has it - try the next
+    if taken_by_us is not None:
+        return None, taken_by_us
+    raise OSError("no free port for Foxentry Data Cleaner in %s" % (_PORTS,))
 
 
 def start_server(port: int = 0, open_writer: bool = True) -> None:
     global _PORT
-
-    # Already running? Give the user their window back and get out of the way.
-    if open_writer and not port:
-        existing = _running_instance()
-        if existing:
-            print("\n  " + i18n.t("already_running", url=existing))
-            try:
-                from . import applaunch
-                applaunch.open_ui(existing, app_mode=config_mod.Config().ui_app_mode)
-            except Exception:
-                pass
-            return
-
     cfg = config_mod.Config()
     i18n.set_lang(cfg.lang)
     applog.set_value(cfg.LOG_DIR, cfg.log_app)
@@ -1003,12 +985,29 @@ def start_server(port: int = 0, open_writer: bool = True) -> None:
     applog.info("  platform=%s %s | python=%s | frozen=%s",
                 _pf.system(), _pf.release(), _pf.python_version(), getattr(sys, "frozen", False))
     applog.info("  data_dir=%s", config_mod.DATA_ROOT)
-    applog.info("  port=%s concurrency=%s api_version=%s",
-                port or "auto", cfg.concurrency, cfg.api_version)
-    server = LoopbackServer(("127.0.0.1", port), Handler)
-    actual_port = server.server_address[1]
+
+    # A caller-given port (tests, --port) is taken as-is. Otherwise claim a fixed app port -
+    # and if a copy of us already holds one, reopen its window instead of starting a second.
+    if port:
+        server = LoopbackServer(("127.0.0.1", port), Handler)
+        actual_port = server.server_address[1]
+    else:
+        server, actual_port = _bind_or_find_running()
+        if server is None:
+            url = f"http://127.0.0.1:{actual_port}/"
+            applog.info("already running on %s - reopening its window", actual_port)
+            print("\n  " + i18n.t("already_running", url=url))
+            if open_writer:
+                try:
+                    from . import applaunch
+                    applaunch.open_ui(url, app_mode=cfg.ui_app_mode)
+                except Exception:
+                    pass
+            return
+
     _PORT = actual_port
-    _claim_instance(actual_port)
+    applog.info("  port=%s concurrency=%s api_version=%s",
+                actual_port, cfg.concurrency, cfg.api_version)
     url = f"http://127.0.0.1:{actual_port}/"
     print()
     print("  🦊  " + i18n.t("app_title"))
@@ -1040,5 +1039,3 @@ def start_server(port: int = 0, open_writer: bool = True) -> None:
     except KeyboardInterrupt:
         print("\n  " + i18n.t("server_bye"))
         server.shutdown()
-    finally:
-        _release_instance()
